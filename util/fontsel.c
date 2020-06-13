@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 
 #include <X11/Intrinsic.h>
 #include <Xm/Xm.h>
@@ -577,6 +578,126 @@ static void getStringComponent(const char *inStr, int pos, char *outStr)
     outStr[j] = '\0';
 }
 
+/*
+** return the number of fields in the font name
+*/
+static int fontNameFieldNum(const char *font)
+{
+    int i, fieldNum = 0;
+    
+    for (i = 0; font[i] != '\0'; i++)
+        if (font[i] == DELIM && font[i+1] != '\0')
+            fieldNum++;
+	    
+    return fieldNum;
+}
+
+/*
+** replace the specified field in the font name with
+** the replacement string.
+*/
+static void replaceFontField(char *font, char *newField, int pos, int bufSize)
+{
+    char *outStr;
+    char buff1[TEMP_BUF_SIZE];
+    int i, fieldNum = fontNameFieldNum(font);
+    
+    /* make sure there's enough room for replacement */
+    getStringComponent(font, pos, buff1);
+    if (strlen(font) - strlen(buff1) + strlen(newField) +1 > bufSize)
+    	return;
+    
+    outStr = (char *)XtMalloc(sizeof(char) * bufSize);
+    outStr[0] = '\0';
+    for (i=0; i <= fieldNum; i++) {
+    	if (i==pos) {
+	    strcat(outStr, newField);
+	}
+	else {
+    	    getStringComponent(font, i, buff1);
+    	    strcat(outStr, buff1);
+	}
+	
+        strcat(outStr, "-");
+    }
+    
+    if (outStr[strlen(outStr)-1] == '-')
+        outStr[strlen(outStr)-1] = '\0';
+	
+    strcpy(font, outStr);
+    XtFree(outStr);
+}
+
+/*
+** Search for the next larger/smaller font.
+**
+** Returns True if a new font is found.
+**
+** BUG: assumed font sorted by size for each font type.
+**   
+*/
+int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
+{
+    char        buff[TEMP_BUF_SIZE];
+    char        **fontData;     /* font name info  */
+    int         i, numFonts, curSize, size;
+    int         found = False, lastFontIndex=-1, inPixel;
+    char        starFont[TEMP_BUF_SIZE];
+
+    inPixel = 0;
+    getSizePart(font, buff, inPixel);
+    curSize = atoi(buff);
+    if (curSize <1) {
+    	inPixel = 1;
+    	getSizePart(font, buff, inPixel);
+    	curSize = atoi(buff);
+    }
+    
+    strcpy(starFont, font);
+    replaceFontField(starFont, "*", 7, TEMP_BUF_SIZE);
+    replaceFontField(starFont, "*", 8, TEMP_BUF_SIZE);
+    getStringComponent(font, 11, buff);
+    if (strlen(buff) == 1 && isalpha(buff[0]))
+        replaceFontField(starFont, "*", 12, TEMP_BUF_SIZE);
+    
+    fontData = XListFonts(XtDisplay(w), starFont, MAX_NUM_FONTS, &numFonts);
+    
+    for (i = 0; i < numFonts && i < MAX_ENTRIES_IN_LIST; i++) {
+    	char *fData = fontData[i];
+	
+	getSizePart(fData, buff, inPixel);
+	size = atoi(buff);
+	if (larger) {
+	    if (size>curSize) {
+		strcpy(newFont, fData);
+		found = True;
+		break;
+	    }
+	}
+	else {
+	    if (size<curSize) {
+	    	lastFontIndex = i;
+	    }
+	    else if (lastFontIndex>=0) {
+		strcpy(newFont, fontData[lastFontIndex]);
+		found = True;
+		break;
+	    }
+	}
+    }
+    
+    if (found) {
+	strcpy(starFont, font);
+	getStringComponent(newFont, 7, buff);
+	replaceFontField(starFont, buff, 7, TEMP_BUF_SIZE);
+	getStringComponent(newFont, 8, buff);
+	replaceFontField(starFont, buff, 8, TEMP_BUF_SIZE);
+	strcpy(newFont, starFont);
+    }
+    
+    XFreeFontNames(fontData);
+    return found;
+}
 
 /* parse through the fontlist data and set up the three scroll lists */
 

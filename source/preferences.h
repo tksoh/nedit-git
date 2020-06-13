@@ -210,5 +210,8 @@ Boolean GetPrefFocusOnRaise(void);
 Boolean GetPrefHonorSymlinks(void);
 Boolean GetPrefForceOSConversion(void);
 void SetPrefFocusOnRaise(Boolean);
+void SetPrefAutoResizeWindow(int state);
+int GetPrefAutoResizeWindow(void);
+void ZoomFonts(WindowInfo *window, int larger);
 
 #endif /* NEDIT_PREFERENCES_H_INCLUDED */

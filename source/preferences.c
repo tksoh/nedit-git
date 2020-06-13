@@ -242,6 +242,8 @@ typedef struct {
 /* Repository for simple preferences settings */
 static struct prefData {
     int openInTab;		/* open files in new tabs  */
+    int autoResizeWindow;       /* resize window automatical when text fonts
+                                   changes, or line number is shown/hidden */
     int wrapStyle;		/* what kind of wrapping to do */
     int wrapMargin;		/* 0=wrap at window width, other=wrap margin */
     int autoIndent;		/* style for auto-indent */
@@ -854,6 +856,8 @@ static PrefDescripRec PrefDescrip[] = {
     	&PrefData.autoSave, NULL, True},
     {"openInTab", "OpenInTab", PREF_BOOLEAN, "True",
     	&PrefData.openInTab, NULL, True},
+    {"autoResizeWindow", "AutoResizeWindow", PREF_BOOLEAN, "False",
+    	&PrefData.autoResizeWindow, NULL, False},
     {"saveOldVersion", "SaveOldVersion", PREF_BOOLEAN, "False",
     	&PrefData.saveOldVersion, NULL, True},
     {"showMatching", "ShowMatching", PREF_ENUM, "Delimiter",
@@ -1536,6 +1540,16 @@ void SetPrefOpenInTab(int state)
 int GetPrefOpenInTab(void)
 {
     return PrefData.openInTab;
+}
+
+void SetPrefAutoResizeWindow(int state)
+{
+    setIntPref(&PrefData.autoResizeWindow, state);
+}
+
+int GetPrefAutoResizeWindow(void)
+{
+    return PrefData.autoResizeWindow;
 }
 
 void SetPrefWrap(WrapStyle state)
@@ -4368,6 +4382,34 @@ static void browseFont(Widget parent, Widget fontTextW)
     	return;
     XmTextSetString(fontTextW, newFontName);
     NEditFree(newFontName);
+}
+
+/*
+** increase/decrease font sizes of window
+*/
+void ZoomFonts(WindowInfo *window, int larger)
+{
+    char fontName[MAX_FONT_LEN];
+    char boldFontName[MAX_FONT_LEN];
+    char italicFontName[MAX_FONT_LEN];
+    char boldItalicFontName[MAX_FONT_LEN];
+    
+    if (GetZoomFont(window->shell, window->fontName, fontName, larger) &&
+    	GetZoomFont(window->shell, window->boldFontName, boldFontName, larger) &&
+    	GetZoomFont(window->shell, window->italicFontName, italicFontName, larger) &&
+    	GetZoomFont(window->shell, window->boldItalicFontName, boldItalicFontName, larger))
+    {
+    	char *params[4];
+        params[0] = fontName;
+        params[1] = italicFontName;
+        params[2] = boldFontName;
+        params[3] = boldItalicFontName;
+        XtCallActionProc(window->textArea, "set_fonts", NULL, params, 4);
+    }
+    else
+    {
+	XBell(TheDisplay, 0);
+    }
 }
 
 /*

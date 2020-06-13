@@ -127,6 +127,8 @@ static void noWrapCB(Widget w, WindowInfo *window, caddr_t callData);
 static void continuousWrapCB(Widget w, WindowInfo *window, caddr_t callData);
 static void wrapMarginCB(Widget w, WindowInfo *window, caddr_t callData);
 static void fontCB(Widget w, WindowInfo *window, caddr_t callData);
+static void largerFontCB(Widget w, WindowInfo *window, caddr_t callData);
+static void smallerFontCB(Widget w, WindowInfo *window, caddr_t callData);
 static void tabsCB(Widget w, WindowInfo *window, caddr_t callData);
 static void backlightCharsCB(Widget w, WindowInfo *window, caddr_t callData);
 static void showMatchingOffCB(Widget w, WindowInfo *window, caddr_t callData);
@@ -1106,6 +1108,11 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     createMenuItem(menuPane, "tabs", "Tab Stops...", 'T', tabsCB, window, SHORT);
     createMenuItem(menuPane, "textFont", "Text Fonts...", 'F', fontCB, window,
     	    FULL);
+    subPane = createMenu(menuPane, "textZoom", "Text Zoom", 'Z', NULL, FULL);
+    createMenuItem(subPane, "textZoomSmaller", "Smaller", 0, 
+    	    smallerFontCB, window, FULL);
+    createMenuItem(subPane, "textZoomLarger", "Larger", 0, 
+    	    largerFontCB, window, FULL);
     window->highlightItem = createMenuToggle(menuPane, "highlightSyntax",
 	    "Highlight Syntax", 'H', doActionCB, "set_highlight_syntax",
 	    GetPrefHighlightSyntax(), SHORT);
@@ -1686,6 +1693,24 @@ static void matchSyntaxBasedCB(Widget w, WindowInfo *window, caddr_t callData)
 static void fontCB(Widget w, WindowInfo *window, caddr_t callData)
 {
     ChooseFonts(WidgetToWindow(MENU_WIDGET(w)), True);
+}
+
+static void largerFontCB(Widget w, WindowInfo *window, caddr_t callData)
+{    
+    window = WidgetToWindow(MENU_WIDGET(w));
+    HidePointerOnKeyedEvent(WidgetToWindow(MENU_WIDGET(w))->lastFocus,
+            ((XmAnyCallbackStruct *)callData)->event);
+    
+    ZoomFonts(window, 1);
+}
+
+static void smallerFontCB(Widget w, WindowInfo *window, caddr_t callData)
+{
+    window = WidgetToWindow(MENU_WIDGET(w));
+    HidePointerOnKeyedEvent(WidgetToWindow(MENU_WIDGET(w))->lastFocus,
+            ((XmAnyCallbackStruct *)callData)->event);
+    
+    ZoomFonts(window, 0);
 }
 
 static void noWrapCB(Widget w, WindowInfo *window, caddr_t callData)

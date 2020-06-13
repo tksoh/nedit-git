@@ -1407,11 +1407,13 @@ void ShowLineNumbers(WindowInfo *window, int state)
     if (state) {
         reqCols = updateLineNumDisp(window);
     } else {
-        XtVaGetValues(window->shell, XmNwidth, &windowWidth, NULL);
-        XtVaGetValues(window->textArea,
-	        textNmarginWidth, &marginWidth, NULL);
-        XtVaSetValues(window->shell, XmNwidth,
-                windowWidth - textD->left + marginWidth, NULL);
+    	if (GetPrefAutoResizeWindow()) {
+	    XtVaGetValues(window->shell, XmNwidth, &windowWidth, NULL);
+            XtVaGetValues(window->textArea,
+	            textNmarginWidth, &marginWidth, NULL);
+            XtVaSetValues(window->shell, XmNwidth,
+            	    windowWidth - textD->left + marginWidth, NULL);
+        }
 	
         for (i=0; i<=window->nPanes; i++) {
             text = i==0 ? window->textArea : window->textPanes[i-1];
@@ -1869,7 +1871,7 @@ void SetFonts(WindowInfo *window, const char *fontName, const char *italicName,
 	XtVaSetValues(window->shell, XmNwidth, newWindowWidth, XmNheight,
         	newWindowHeight, NULL);
     }
-    
+
     /* Change the minimum pane height */
     UpdateMinPaneHeights(window);
 }
@@ -2644,12 +2646,14 @@ static int updateGutterWidth(WindowInfo* window)
         XtVaGetValues(window->textArea, textNfont, &fs, NULL);
         fontWidth = fs->max_bounds.width;
 
-        XtVaGetValues(window->shell, XmNwidth, &windowWidth, NULL);
-        XtVaSetValues(window->shell,
-                XmNwidth, (Dimension) windowWidth + (newColsDiff * fontWidth),
-                NULL);
+    	if (GetPrefAutoResizeWindow()) {
+            XtVaGetValues(window->shell, XmNwidth, &windowWidth, NULL);
+            XtVaSetValues(window->shell,
+                    XmNwidth, (Dimension) windowWidth + (newColsDiff * fontWidth),
+                    NULL);
 
-        UpdateWMSizeHints(window);
+            UpdateWMSizeHints(window);
+        }
     }
 
     for (document = WindowList; NULL != document; document = document->next) {

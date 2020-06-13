@@ -81,5 +81,6 @@
 
 char    *FontSel(Widget parent, int showPropFont, const char *currFont,
         Pixel sampleFG, Pixel sampleBG);
+int GetZoomFont(Widget w, const char *font, char *newFont, int larger);
 
 #endif /* NEDIT_FONTSEL_H_INCLUDED */
