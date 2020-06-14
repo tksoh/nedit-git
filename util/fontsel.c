@@ -628,6 +628,15 @@ static void replaceFontField(char *font, char *newField, int pos, int bufSize)
     XtFree(outStr);
 }
 
+typedef struct {
+    int size;
+    char *fontname;
+} FontSized;
+
+int sortby (const void * a, const void * b) {
+   return ((FontSized*)a)->size > ((FontSized*)b)->size;
+}
+
 /*
 ** Search for the next larger/smaller font.
 **
@@ -643,6 +652,7 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
     int         i, numFonts, curSize, size;
     int         found = False, lastFontIndex=-1, inPixel;
     char        starFont[TEMP_BUF_SIZE];
+    FontSized   fontsizes[MAX_NUM_FONTS];
 
     inPixel = 0;
     getSizePart(font, buff, inPixel);
@@ -660,16 +670,24 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
     if (strlen(buff) == 1 && isalpha(buff[0]))
         replaceFontField(starFont, "*", 12, TEMP_BUF_SIZE);
     
+    /* XListFonts return fontlist in random order, so we need to sort them first */
     fontData = XListFonts(XtDisplay(w), starFont, MAX_NUM_FONTS, &numFonts);
     
     for (i = 0; i < numFonts && i < MAX_ENTRIES_IN_LIST; i++) {
     	char *fData = fontData[i];
-	
+	/* printf("[%d] %s\n", i, fData);   debugging code */
 	getSizePart(fData, buff, inPixel);
-	size = atoi(buff);
+	fontsizes[i].size = atoi(buff);
+	fontsizes[i].fontname = fData;
+    }
+    qsort(fontsizes, numFonts, sizeof(FontSized), sortby);
+
+    /* look for the next smaller/larger font */
+    for (i = 0; i < numFonts && i < MAX_ENTRIES_IN_LIST; i++) {
+	size = fontsizes[i].size;
 	if (larger) {
 	    if (size>curSize) {
-		strcpy(newFont, fData);
+		strcpy(newFont, fontsizes[i].fontname);
 		found = True;
 		break;
 	    }
@@ -679,7 +697,7 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
 	    	lastFontIndex = i;
 	    }
 	    else if (lastFontIndex>=0) {
-		strcpy(newFont, fontData[lastFontIndex]);
+		strcpy(newFont, fontsizes[lastFontIndex].fontname);
 		found = True;
 		break;
 	    }
