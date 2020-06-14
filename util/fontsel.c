@@ -672,6 +672,9 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
     
     /* XListFonts return fontlist in random order, so we need to sort them first */
     fontData = XListFonts(XtDisplay(w), starFont, MAX_NUM_FONTS, &numFonts);
+    if (!fontData) {
+	return False;
+    }
     
     for (i = 0; i < numFonts && i < MAX_ENTRIES_IN_LIST; i++) {
     	char *fData = fontData[i];
