@@ -251,6 +251,8 @@ static int max(int i1, int i2);
 static int min(int i1, int i2);
 static int strCaseCmp(const char *str1, const char *str2);
 static void ringIfNecessary(Boolean silent, Widget w);
+static void fontZoomInAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
+static void fontZoomOutAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
 
 static char defaultTranslations[] = 
     /* Home */
@@ -379,6 +381,12 @@ static char defaultTranslations[] =
     "Meta Shift<KeyPress>osfPageRight: page_right(\"extend\", \"rect\")\n"
     "Shift<KeyPress>osfPageRight: page_right(\"extend\")\n"
     "~Alt ~Shift ~Ctrl ~Meta<KeyPress>osfPageRight: page_right()\n"
+
+    /* change font size */
+    "Ctrl <Key>+: zoom_in()\n"
+    "Ctrl <Key>-: zoom_out()\n"
+    "Ctrl <Key>KP_Add: zoom_in()\n"
+    "Ctrl <Key>KP_Subtract: zoom_out()\n"
 
     "Shift<KeyPress>osfSelect: key_select()\n"
     "<KeyPress>osfCancel: process_cancel()\n"
@@ -574,6 +582,8 @@ static XtActionsRec actionsList[] = {
     {"insert-string", insertStringAP},
     {"insert_string", insertStringAP},
     {"mouse_pan", mousePanAP},
+    {"zoom_in", fontZoomInAP},
+    {"zoom_out", fontZoomOutAP},
 };
 
 /* The motif text widget defined a bunch of actions which the nedit text
@@ -3377,6 +3387,17 @@ static void focusOutAP(Widget w, XEvent *event, String *args, Cardinal *nArgs)
     /* Call any registered focus-out callbacks */
     XtCallCallbacks((Widget)w, textNlosingFocusCallback, (XtPointer)event);
 }
+
+static void fontZoomInAP(Widget w, XEvent *event, String *args, Cardinal *nArgs)
+{
+    ZoomFonts(WidgetToWindow(w), 1);
+}
+
+static void fontZoomOutAP(Widget w, XEvent *event, String *args, Cardinal *nArgs)
+{
+    ZoomFonts(WidgetToWindow(w), 0);
+}
+
 
 /*
 ** For actions involving cursor movement, "extend" keyword means incorporate
