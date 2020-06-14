@@ -4389,25 +4389,51 @@ static void browseFont(Widget parent, Widget fontTextW)
 */
 void ZoomFonts(WindowInfo *window, int larger)
 {
-    char fontName[MAX_FONT_LEN];
+    char primaryName[MAX_FONT_LEN];
     char boldFontName[MAX_FONT_LEN];
     char italicFontName[MAX_FONT_LEN];
     char boldItalicFontName[MAX_FONT_LEN];
+    char *params[4];
+    char *errMsg;
+    char modifiedFontName[MAX_FONT_LEN];
+    char *searchString = "(-[^-]*-[^-]*)-([^-]*)-([^-]*)-(.*)";
+    char *italicReplaceString = "\\1-\\2-o-\\4";
+    char *boldReplaceString = "\\1-bold-\\3-\\4";
+    char *boldItalicReplaceString = "\\1-bold-o-\\4";
+    regexp *compiledRE;
+
     
-    if (GetZoomFont(window->shell, window->fontName, fontName, larger) &&
-    	GetZoomFont(window->shell, window->boldFontName, boldFontName, larger) &&
-    	GetZoomFont(window->shell, window->italicFontName, italicFontName, larger) &&
-    	GetZoomFont(window->shell, window->boldItalicFontName, boldItalicFontName, larger))
-    {
-    	char *params[4];
-        params[0] = fontName;
+    if (GetZoomFont(window->shell, window->fontName, primaryName, larger)) {
+	/* Match the primary font agains RE pattern for font names.  If it
+	   doesn't match, we can't generate highlight font names, so return */
+	compiledRE = CompileRE(searchString, &errMsg, REDFLT_STANDARD);
+	if (!ExecRE(compiledRE, primaryName, NULL, False, '\0', '\0', NULL, NULL, NULL)) {
+	    XBell(TheDisplay, 0);
+	    free(compiledRE);
+	    return;
+	}
+
+	/* Make up names for new fonts based on RE replace patterns */
+	SubstituteRE(compiledRE, italicReplaceString, modifiedFontName,
+		MAX_FONT_LEN);
+	strcpy(italicFontName, modifiedFontName);
+	SubstituteRE(compiledRE, boldReplaceString, modifiedFontName,
+		MAX_FONT_LEN);
+	strcpy(boldFontName, modifiedFontName);
+	SubstituteRE(compiledRE, boldItalicReplaceString, modifiedFontName,
+		MAX_FONT_LEN);
+	strcpy(boldItalicFontName, modifiedFontName);
+
+	/* clean up */
+	NEditFree(compiledRE);
+
+        params[0] = primaryName;
         params[1] = italicFontName;
         params[2] = boldFontName;
         params[3] = boldItalicFontName;
         XtCallActionProc(window->textArea, "set_fonts", NULL, params, 4);
     }
-    else
-    {
+    else {
 	XBell(TheDisplay, 0);
     }
 }

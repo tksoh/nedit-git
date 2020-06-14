@@ -686,15 +686,6 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
 	}
     }
     
-    if (found) {
-	strcpy(starFont, font);
-	getStringComponent(newFont, 7, buff);
-	replaceFontField(starFont, buff, 7, TEMP_BUF_SIZE);
-	getStringComponent(newFont, 8, buff);
-	replaceFontField(starFont, buff, 8, TEMP_BUF_SIZE);
-	strcpy(newFont, starFont);
-    }
-    
     XFreeFontNames(fontData);
     return found;
 }
