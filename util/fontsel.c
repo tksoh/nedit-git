@@ -696,7 +696,8 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
 	    }
 	}
 	else {
-	    if (size<curSize) {
+	    /* make font smaller but not go to zero size, it's unpredictable */
+	    if (size > 0 && size<curSize) {
 	    	lastFontIndex = i;
 	    }
 	    else if (lastFontIndex>=0) {
