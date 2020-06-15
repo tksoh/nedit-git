@@ -1106,13 +1106,13 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     createMenuItem(subPane, "wrapMargin", "Wrap Margin...", 'W',
     	    wrapMarginCB, window, SHORT);
     createMenuItem(menuPane, "tabs", "Tab Stops...", 'T', tabsCB, window, SHORT);
-    createMenuItem(menuPane, "textFont", "Text Fonts...", 'F', fontCB, window,
+    subPane = createMenu(menuPane, "textFont", "Text Fonts", 'F', NULL, FULL);
+    createMenuItem(subPane, "textFont", "Text Fonts...", 'F', fontCB, window,
     	    FULL);
-    subPane = createMenu(menuPane, "textZoom", "Text Zoom", 'Z', NULL, FULL);
-    createMenuItem(subPane, "textZoomSmaller", "Smaller", 0, 
-    	    smallerFontCB, window, FULL);
-    createMenuItem(subPane, "textZoomLarger", "Larger", 0, 
+    createMenuItem(subPane, "textZoomLarger", "Zoom In", 'I',
     	    largerFontCB, window, FULL);
+    createMenuItem(subPane, "textZoomSmaller", "Zoom Out", 'O',
+    	    smallerFontCB, window, FULL);
     window->highlightItem = createMenuToggle(menuPane, "highlightSyntax",
 	    "Highlight Syntax", 'H', doActionCB, "set_highlight_syntax",
 	    GetPrefHighlightSyntax(), SHORT);
