@@ -359,7 +359,6 @@ typedef struct _WindowInfo {
     Widget	showMatchingOffItem;
     Widget	showMatchingDelimitItem;
     Widget	showMatchingRangeItem;
-    Widget	matchSyntaxBasedItem;
     Widget	overtypeModeItem;
     Widget	highlightItem;
     Widget	windowMenuPane;
@@ -385,7 +384,6 @@ typedef struct _WindowInfo {
     Widget	showMatchingOffDefItem;
     Widget	showMatchingDelimitDefItem;
     Widget	showMatchingRangeDefItem;
-    Widget	matchSyntaxBasedDefItem;
     Widget	highlightOffDefItem;
     Widget	highlightDefItem;
     Widget	backlightCharsItem;
@@ -500,7 +498,6 @@ typedef struct _WindowInfo {
     ShowMatchingStyle showMatchingStyle;/* How to show matching parens:
 					   NO_FLASH, FLASH_DELIMIT, or
 					   FLASH_RANGE */
-    char	matchSyntaxBased;	/* Use syntax info to show matching */
     Boolean	showStats;		/* is stats line supposed to be shown */
     Boolean 	showISearchLine;    	/* is incr. search line to be shown */
     Boolean 	showLineNumbers;    	/* is the line number display shown */
@@ -546,6 +543,9 @@ typedef struct _WindowInfo {
     Bool	findLastRegexCase; 	/* idem, for regex mode in find dialog */
     Bool	findLastLiteralCase;    /* idem, for literal mode */
     
+    /* Pattern Match Feature */
+    void        *stringMatchTable;      /*  match pattern info related to this window */
+
 #ifdef REPLACE_SCOPE
     int		replaceScope;		/* Current scope for replace dialog */
     Widget	replaceScopeWinToggle;	/* Scope for replace = window */

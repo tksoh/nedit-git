@@ -85,6 +85,7 @@
 #include "../debug.h"
 #endif
 
+#include "patternMatch.h"
 
 int NHist = 0;
 
@@ -173,6 +174,7 @@ static void checkMultiReplaceListForDoomedW(WindowInfo* window,
                                                      WindowInfo* doomedWindow);
 static void removeDoomedWindowFromList(WindowInfo* window, int index);
 static void unmanageReplaceDialogs(const WindowInfo *window);
+static int getPosForMatchingCharacter(WindowInfo *window);
 static void flashTimeoutProc(XtPointer clientData, XtIntervalId *id);
 static void eraseFlash(WindowInfo *window);
 static int getReplaceDlogInfo(WindowInfo *window, int *direction,
@@ -213,9 +215,6 @@ static void resetReplaceTabGroup(WindowInfo *window);
 static int searchMatchesSelection(WindowInfo *window, const char *searchString,
 	int searchType, int *left, int *right, int *searchExtentBW, 
 	int *searchExtentFW);
-static int findMatchingChar(WindowInfo *window, char toMatch,
-	void *toMatchStyle, int charPos, int startLimit, int endLimit, 
-	int *matchPos);
 static Boolean replaceUsingRE(const char* searchStr, const char* replaceStr,
         const char* sourceStr, int beginPos, char* destStr, int maxDestLen,
         int prevChar, const char* delimiters, int defaultFlags);
@@ -251,24 +250,6 @@ typedef struct _charMatchTable {
     char match;
     char direction;
 } charMatchTable;
-
-#define N_MATCH_CHARS 13
-#define N_FLASH_CHARS 6
-static charMatchTable MatchingChars[N_MATCH_CHARS] = {
-    {'{', '}', SEARCH_FORWARD},
-    {'}', '{', SEARCH_BACKWARD},
-    {'(', ')', SEARCH_FORWARD},
-    {')', '(', SEARCH_BACKWARD},
-    {'[', ']', SEARCH_FORWARD},
-    {']', '[', SEARCH_BACKWARD},
-    {'<', '>', SEARCH_FORWARD},
-    {'>', '<', SEARCH_BACKWARD},
-    {'/', '/', SEARCH_FORWARD},
-    {'"', '"', SEARCH_FORWARD},
-    {'\'', '\'', SEARCH_FORWARD},
-    {'`', '`', SEARCH_FORWARD},
-    {'\\', '\\', SEARCH_FORWARD},
-};
 
 /*
 ** Definitions for the search method strings, used as arguments for 
@@ -3311,18 +3292,18 @@ static void iSearchTextKeyEH(Widget w, WindowInfo *window,
 }
 
 /*
-** Check the character before the insertion cursor of textW and flash
-** matching parenthesis, brackets, or braces, by temporarily highlighting
-** the matching character (a timer procedure is scheduled for removing the
-** highlights)
+** Check the characters before the insertion cursor of textW and flash
+** matching patterns (parenthesis e.g. brackets, braces ..) by temporarily
+** highlighting matching characters (a timer procedure is scheduled for
+** removing the highlights)
 */
 void FlashMatching(WindowInfo *window, Widget textW)
 {
-    char c;
-    void *style;
-    int pos, matchIndex;
-    int startPos, endPos, searchPos, matchPos;
+    int pos;
+    int direction;
+    int startPos, endPos, matchPos, matchLen;
     int constrain;
+    MatchingType matchingType;
     
     /* if a marker is already drawn, erase it and cancel the timeout */
     if (window->flashTimeoutID != 0) {
@@ -3340,48 +3321,43 @@ void FlashMatching(WindowInfo *window, Widget textW)
     if (window->buffer->primary.selected)
    	return;
 
-    /* get the character to match and the position to start from */
-    pos = TextGetCursorPos(textW) - 1;
+    /* get the position to start from */
+    pos = TextGetCursorPos(textW);
     if (pos < 0)
     	return;
-    c = BufGetCharacter(window->buffer, pos);
-    style = GetHighlightInfo(window, pos);
-    
-    /* is the character one we want to flash? */
-    for (matchIndex = 0; matchIndex<N_FLASH_CHARS; matchIndex++) {
-        if (MatchingChars[matchIndex].c == c)
-	    break;
-    }
-    if (matchIndex == N_FLASH_CHARS)
-	return;
 
     /* constrain the search to visible text only when in single-pane mode
        AND using delimiter flashing (otherwise search the whole buffer) */
     constrain = ((window->nPanes == 0) && 
         (window->showMatchingStyle == FLASH_DELIMIT));
           
-    if (MatchingChars[matchIndex].direction == SEARCH_BACKWARD) {
     	startPos = constrain ? TextFirstVisiblePos(textW) : 0;
-    	endPos = pos;
-    	searchPos = endPos;
-    } else {
-    	startPos = pos;
     	endPos = constrain ? TextLastVisiblePos(textW) :
     	    	window->buffer->length;
-    	searchPos = startPos;
+
+    /* cursor pos. must be between start / end pos. */
+    if (pos < startPos || pos > endPos)
+        return;
+
+    /* Pattern Match Feature: determine matching type
+       (here: flash delimiter or range) */
+    if (window->showMatchingStyle == FLASH_DELIMIT) {
+        matchingType = MT_FLASH_DELIMIT;
+    } else {
+        matchingType = MT_FLASH_RANGE;
     }
     
-    /* do the search */
-    if (!findMatchingChar(window, c, style, searchPos, startPos, endPos, 
-        &matchPos))
+    /* Pattern Match Feature: do the search */
+    if (!FindMatchingString(window, matchingType, &pos, startPos, endPos,
+            &matchPos, &matchLen, &direction))
     	return;
 
     if (window->showMatchingStyle == FLASH_DELIMIT) {
-	/* Highlight either the matching character ... */
-	BufHighlight(window->buffer, matchPos, matchPos+1);
+        /* Highlight either the matching characters ... */
+        BufHighlight(window->buffer, matchPos, matchPos + matchLen);
     } else {
 	/* ... or the whole range. */
-  	if (MatchingChars[matchIndex].direction == SEARCH_BACKWARD) {
+        if (direction == SEARCH_BACKWARD) {
 	    BufHighlight(window->buffer, matchPos, pos+1);
 	} else {
 	    BufHighlight(window->buffer, matchPos+1, pos);
@@ -3395,38 +3371,46 @@ void FlashMatching(WindowInfo *window, Widget textW)
     window->flashPos = matchPos;
 }
 
-void SelectToMatchingCharacter(WindowInfo *window)
+/*
+** Pattern Match Feature:
+** get position of the character to match from the selection, or
+** the character before the insert point if nothing is selected.
+**
+*/
+static int getPosForMatchingCharacter(WindowInfo *window)
 {
+    int pos;
     int selStart, selEnd;
-    int startPos, endPos, matchPos;
     textBuffer *buf = window->buffer;
 
-    /* get the character to match and its position from the selection, or
-       the character before the insert point if nothing is selected.
-       Give up if too many characters are selected */
-    if (!GetSimpleSelection(buf, &selStart, &selEnd)) {
-	selEnd = TextGetCursorPos(window->lastFocus);
-        if (window->overstrike)
-	    selEnd += 1;
-	selStart = selEnd - 1;
-	if (selStart < 0) {
-	    XBell(TheDisplay, 0);
-	    return;
+    if (GetSimpleSelection(buf, &selStart, &selEnd)) {
+      pos = selEnd;
 	}
+    else {
+      pos = TextGetCursorPos(window->lastFocus);
     }
-    if ((selEnd - selStart) != 1) {
-    	XBell(TheDisplay, 0);
-	return;
+
+    return pos;
     }
     
+void SelectToMatchingCharacter(WindowInfo *window)
+{
+    int pos;
+    int startPos, endPos, matchPos, matchLen;
+    int direction;
+    textBuffer *buf = window->buffer;
+
+    /* Pattern Match Feature: get position of the character to match */
+    pos = getPosForMatchingCharacter( window );
+
     /* Search for it in the buffer */
-    if (!findMatchingChar(window, BufGetCharacter(buf, selStart),
-        GetHighlightInfo(window, selStart), selStart, 0, buf->length, &matchPos)) {
+    if (!FindMatchingString(window, MT_SELECT, &pos, 0,
+                buf->length, &matchPos, &matchLen, &direction)) {
     	XBell(TheDisplay, 0);
 	return;
     }
-    startPos = (matchPos > selStart) ? selStart : matchPos;
-    endPos = (matchPos > selStart) ? matchPos : selStart;
+    startPos = (matchPos > pos) ? pos : matchPos;
+    endPos = (matchPos > pos) ? matchPos : pos;
 
     /* temporarily shut off autoShowInsertPos before setting the cursor
        position so MakeSelectionVisible gets a chance to place the cursor
@@ -3442,32 +3426,17 @@ void SelectToMatchingCharacter(WindowInfo *window)
 
 void GotoMatchingCharacter(WindowInfo *window)
 {
-    int selStart, selEnd;
-    int matchPos;
+    int pos;
+    int matchPos, matchLen;
+    int direction;
     textBuffer *buf = window->buffer;
 
-    /* get the character to match and its position from the selection, or
-       the character before the insert point if nothing is selected.
-       Give up if too many characters are selected */
-    if (!GetSimpleSelection(buf, &selStart, &selEnd)) {
-	selEnd = TextGetCursorPos(window->lastFocus);
-        if (window->overstrike)
-	    selEnd += 1;
-	selStart = selEnd - 1;
-	if (selStart < 0) {
-	    XBell(TheDisplay, 0);
-	    return;
-	}
-    }
-    if ((selEnd - selStart) != 1) {
-    	XBell(TheDisplay, 0);
-	return;
-    }
+    /* Pattern Match Feature: get position of the character to match */
+    pos = getPosForMatchingCharacter( window );
     
     /* Search for it in the buffer */
-    if (!findMatchingChar(window, BufGetCharacter(buf, selStart),
-	    GetHighlightInfo(window, selStart), selStart, 0, 
-	    buf->length, &matchPos)) {
+    if (!FindMatchingString(window, MT_GOTO, &pos, 0,
+                buf->length, &matchPos, &matchLen, &direction)) {
     	XBell(TheDisplay, 0);
 	return;
     }
@@ -3478,75 +3447,9 @@ void GotoMatchingCharacter(WindowInfo *window)
        be automatically scrolled on screen and MakeSelectionVisible would do
        nothing) */
     XtVaSetValues(window->lastFocus, textNautoShowInsertPos, False, NULL);
-    TextSetCursorPos(window->lastFocus, matchPos+1);
+    TextSetCursorPos(window->lastFocus, matchPos);
     MakeSelectionVisible(window, window->lastFocus);
     XtVaSetValues(window->lastFocus, textNautoShowInsertPos, True, NULL);
-}
-
-static int findMatchingChar(WindowInfo *window, char toMatch, 
-    void* styleToMatch, int charPos, int startLimit, int endLimit, 
-    int *matchPos)
-{
-    int nestDepth, matchIndex, direction, beginPos, pos;
-    char matchChar, c;
-    void *style = NULL;
-    textBuffer *buf = window->buffer;
-    int matchSyntaxBased = window->matchSyntaxBased;
-
-    /* If we don't match syntax based, fake a matching style. */
-    if (!matchSyntaxBased) style = styleToMatch;
-    
-    /* Look up the matching character and match direction */
-    for (matchIndex = 0; matchIndex<N_MATCH_CHARS; matchIndex++) {
-        if (MatchingChars[matchIndex].c == toMatch)
-	    break;
-    }
-    if (matchIndex == N_MATCH_CHARS)
-	return FALSE;
-    matchChar = MatchingChars[matchIndex].match;
-    direction = MatchingChars[matchIndex].direction;
-    
-    /* find it in the buffer */
-    beginPos = (direction==SEARCH_FORWARD) ? charPos+1 : charPos-1;
-    nestDepth = 1;
-    if (direction == SEARCH_FORWARD) {
-    	for (pos=beginPos; pos<endLimit; pos++) {
-	    c=BufGetCharacter(buf, pos);
-	    if (c == matchChar) {
-		if (matchSyntaxBased) style = GetHighlightInfo(window, pos);
-		if (style == styleToMatch) {
-		    nestDepth--;
-		    if (nestDepth == 0) {
-			*matchPos = pos;
-			return TRUE;
-		    }
-		}
-	    } else if (c == toMatch) {
-		if (matchSyntaxBased) style = GetHighlightInfo(window, pos);
-		if (style == styleToMatch)
-		    nestDepth++;
-	    }
-	}
-    } else { /* SEARCH_BACKWARD */
-	for (pos=beginPos; pos>=startLimit; pos--) {
-	    c=BufGetCharacter(buf, pos);
-	    if (c == matchChar) {
-		if (matchSyntaxBased) style = GetHighlightInfo(window, pos);
-		if (style == styleToMatch) {
-		    nestDepth--;
-		    if (nestDepth == 0) {
-			*matchPos = pos;
-			return TRUE;
-		    }
-		}
-	    } else if (c == toMatch) {
-		if (matchSyntaxBased) style = GetHighlightInfo(window, pos);
-		if (style == styleToMatch)
-		    nestDepth++;
-	    }
-	}
-    }
-    return FALSE;
 }
 
 /*

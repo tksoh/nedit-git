@@ -2,10 +2,10 @@
 *                                                                              *
 * help_topic.h --  Nirvana Editor help display                                 *
 *                                                                              *
-                 Generated on Jan 14, 2017 (Do NOT edit!)
+                 Generated on Jun 15, 2020 (Do NOT edit!)
                  Source of content from file help.etx
 *                                                                              *
-* Copyright (c) 1999-2017 Mark Edel                                            *
+* Copyright (c) 1999-2020 Mark Edel                                            *
 *                                                                              *
 * This is free software; you can redistribute it and/or modify it under the    *
 * terms of the GNU General Public License as published by the Free Software    *
@@ -63,6 +63,7 @@ enum HelpTopic {
     HELP_SYNTAX,
     HELP_TAGS,
     HELP_CALLTIPS,
+    HELP_PATTERN_MATCHING,
     HELP_BASICSYNTAX,
     HELP_ESCAPESEQUENCES,
     HELP_PARENCONSTRUCTS,
@@ -81,6 +82,7 @@ enum HelpTopic {
     HELP_BINDING,
     HELP_PATTERNS,
     HELP_SMART_INDENT,
+    HELP_MATCHING_PATTERNS,
     HELP_COMMAND_LINE,
     HELP_SERVER,
     HELP_RECOVERY,

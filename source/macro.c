@@ -57,6 +57,8 @@
 #include "highlightData.h"
 #include "rangeset.h"
 #include "../util/nedit_malloc.h"
+#include "regularExp.h"
+#include "patternMatch.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -296,8 +298,6 @@ static int incBackupMV(WindowInfo *window, DataValue *argList, int nArgs,
     DataValue *result, char **errMsg);
 static int showMatchingMV(WindowInfo *window, DataValue *argList, int nArgs,
     DataValue *result, char **errMsg);
-static int matchSyntaxBasedMV(WindowInfo *window, DataValue *argList, int nArgs,
-    DataValue *result, char **errMsg);
 static int overTypeModeMV(WindowInfo *window, DataValue *argList, int nArgs,
     DataValue *result, char **errMsg);
 static int readOnlyMV(WindowInfo *window, DataValue *argList, int nArgs,
@@ -407,6 +407,10 @@ static int getStyleAtPosMS(WindowInfo *window, DataValue *argList, int nArgs,
 static int filenameDialogMS(WindowInfo* window, DataValue* argList, int nArgs,
         DataValue* result, char** errMsg);
 
+/* Pattern Match Feature */
+static int getMatchingMS(WindowInfo *window, DataValue *argList, int nArgs,
+        DataValue *result, char **errMsg);
+
 /* Built-in subroutines and variables for the macro language */
 static BuiltInSubr MacroSubrs[] = {lengthMS, getRangeMS, tPrintMS,
         dialogMS, stringDialogMS, replaceRangeMS, replaceSelectionMS,
@@ -424,7 +428,8 @@ static BuiltInSubr MacroSubrs[] = {lengthMS, getRangeMS, tPrintMS,
         rangesetSetColorMS, rangesetSetNameMS, rangesetSetModeMS,
         rangesetGetByNameMS,
         getPatternByNameMS, getPatternAtPosMS,
-        getStyleByNameMS, getStyleAtPosMS, filenameDialogMS
+        getStyleByNameMS, getStyleAtPosMS, filenameDialogMS,
+        getMatchingMS
     };
 #define N_MACRO_SUBRS (sizeof MacroSubrs/sizeof *MacroSubrs)
 static const char *MacroSubrNames[N_MACRO_SUBRS] = {"length", "get_range", "t_print",
@@ -443,7 +448,8 @@ static const char *MacroSubrNames[N_MACRO_SUBRS] = {"length", "get_range", "t_pr
         "rangeset_set_color", "rangeset_set_name", "rangeset_set_mode",
         "rangeset_get_by_name",
         "get_pattern_by_name", "get_pattern_at_pos",
-        "get_style_by_name", "get_style_at_pos", "filename_dialog"
+        "get_style_by_name", "get_style_at_pos", "filename_dialog",
+        "get_matching"
     };
 static BuiltInSubr SpecialVars[] = {cursorMV, lineMV, columnMV,
         fileNameMV, filePathMV, lengthMV, selectionStartMV, selectionEndMV,
@@ -451,7 +457,7 @@ static BuiltInSubr SpecialVars[] = {cursorMV, lineMV, columnMV,
         emTabDistMV, useTabsMV, languageModeMV, modifiedMV,
         statisticsLineMV, incSearchLineMV, showLineNumbersMV,
         autoIndentMV, wrapTextMV, highlightSyntaxMV,
-        makeBackupCopyMV, incBackupMV, showMatchingMV, matchSyntaxBasedMV,
+        makeBackupCopyMV, incBackupMV, showMatchingMV,
         overTypeModeMV, readOnlyMV, lockedMV, fileFormatMV,
         fontNameMV, fontNameItalicMV,
         fontNameBoldMV, fontNameBoldItalicMV, subscriptSepMV,
@@ -469,7 +475,7 @@ static const char *SpecialVarNames[N_SPECIAL_VARS] = {"$cursor", "$line", "$colu
         "$language_mode", "$modified",
         "$statistics_line", "$incremental_search_line", "$show_line_numbers",
         "$auto_indent", "$wrap_text", "$highlight_syntax",
-        "$make_backup_copy", "$incremental_backup", "$show_matching", "$match_syntax_based",
+        "$make_backup_copy", "$incremental_backup", "$show_matching",
         "$overtype_mode", "$read_only", "$locked", "$file_format",
         "$font_name", "$font_name_italic",
         "$font_name_bold", "$font_name_bold_italic", "$sub_sep",
@@ -4295,16 +4301,6 @@ static int showMatchingMV(WindowInfo *window, DataValue *argList, int nArgs,
     return True;
 }
 
-static int matchSyntaxBasedMV(WindowInfo *window, DataValue *argList, int nArgs,
-    DataValue *result, char **errMsg)
-{
-    result->tag = INT_TAG;
-    result->val.n = window->matchSyntaxBased ? 1 : 0;
-    return True;
-}
-
-
-
 static int overTypeModeMV(WindowInfo *window, DataValue *argList, int nArgs,
     DataValue *result, char **errMsg)
 {
@@ -5677,6 +5673,94 @@ static int getPatternAtPosMS(WindowInfo *window, DataValue *argList, int nArgs,
     return fillPatternResult(result, errMsg, window,
         HighlightNameOfCode(window, patCode), False, True,
         HighlightStyleOfCode(window, patCode), bufferPos);
+}
+
+/*
+** Pattern Match Feature:
+** Find a matching pattern string related to the given position.
+**
+** Syntax:
+**   get_matching(position)
+**
+** Returns info about matching pattern within an array. The array has
+** the following keys: "pos" (position of the first character of the
+** matching pattern), "len" (length of the matching pattern), "direction"
+** (direction where the matching pattern was found: "0" = forward;
+** "1" = backward). If no matching pattern was found, then array element
+** of "pos" holds "-1", "len" holds "0" and "direction" holds "-1".
+**
+*/
+
+static int getMatchingMS(WindowInfo *window, DataValue *argList, int nArgs,
+        DataValue *result, char **errMsg)
+{
+    int startPos;
+    int matchPos, matchLen;
+    int direction;
+    textBuffer *buf = window->buffer;
+    DataValue dv;
+
+    /*
+     * Perform syntax & semantic check
+     */
+    if (nArgs != 1 )
+        return wrongNArgsErr(errMsg);
+
+    if (!readIntArg(argList[0], &startPos, errMsg))
+        return False;
+
+    startPos ++;
+
+    /*
+     * do the search; provide default values, if search fails
+     */
+    if (!FindMatchingString(window, MT_MACRO, &startPos, 0, buf->length,
+            &matchPos, &matchLen, &direction))
+    {
+        matchPos  = -1;
+        matchLen  =  0;
+        direction = -1;
+    }
+
+    /*
+     * initialize array holding info about matching string
+     */
+    result->tag = ARRAY_TAG;
+    result->val.arrayPtr = ArrayNew();
+
+    /*
+     * the following array entries will be integers
+     */
+    dv.tag = INT_TAG;
+
+    /*
+     * insert match position
+     */
+    dv.val.n = matchPos;
+    if (!ArrayInsert(result, PERM_ALLOC_STR("pos"), &dv))
+    {
+        M_ARRAY_INSERT_FAILURE();
+    }
+
+    /*
+     * insert length of matching pattern
+     */
+    dv.val.n = matchLen;
+    if (!ArrayInsert(result, PERM_ALLOC_STR("len"), &dv))
+    {
+        M_ARRAY_INSERT_FAILURE();
+    }
+
+    /*
+     * insert direction where the matching pattern was found
+     */
+    dv.val.n = direction;
+    if (!ArrayInsert(result, PERM_ALLOC_STR("direction"), &dv))
+    {
+        M_ARRAY_INSERT_FAILURE();
+    }
+
+    return True;
 }
 
 static int wrongNArgsErr(char **errMsg)

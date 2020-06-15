@@ -20,10 +20,11 @@ macro.o: macro.c macro.h nedit.h textBuf.h text.h window.h preferences.h \
   interpret.h ../util/rbTree.h parse.h search.h server.h shell.h smartIndent.h \
   userCmds.h selection.h tags.h calltips.h textDisp.h ../util/DialogF.h \
   ../util/misc.h ../util/fileUtils.h ../util/utils.h highlight.h \
-  highlightData.h rangeset.h
+  highlightData.h rangeset.h patternMatch.h regularExp.h
 menu.o: menu.c menu.h nedit.h textBuf.h text.h file.h window.h search.h \
   selection.h undo.h shift.h help.h help_topic.h preferences.h tags.h \
   userCmds.h shell.h macro.h highlight.h highlightData.h interpret.h \
+  patternMatchData.h \
   ../util/rbTree.h smartIndent.h windowTitle.h ../util/getfiles.h \
   ../util/DialogF.h ../util/misc.h ../util/fileUtils.h ../util/utils.h
 nc.o: nc.c server_common.h ../util/fileUtils.h ../util/utils.h \
@@ -34,9 +35,16 @@ nedit.o: nedit.c nedit.h textBuf.h file.h preferences.h regularExp.h \
   ../util/printUtils.h ../util/fileUtils.h ../util/getfiles.h
 parse_noyacc.o: parse_noyacc.c parse.h interpret.h nedit.h textBuf.h \
   ../util/rbTree.h
+patternMatch.o: patternMatch.c regularExp.h \
+ textBuf.h search.h window.h preferences.h highlight.h\
+ patternMatch.h patternMatchData.h
+patternMatchData.o: patternMatchData.c ../util/DialogF.h ../util/misc.h \
+ ../util/managedList.h regularExp.h textBuf.h nedit.h window.h \
+ preferences.h help.h file.h textP.h patternMatch.h patternMatchData.h
 preferences.o: preferences.c preferences.h nedit.h textBuf.h text.h \
   search.h window.h userCmds.h highlight.h highlightData.h help.h \
   help_topic.h regularExp.h smartIndent.h windowTitle.h server.h tags.h \
+  patternMatchData.h \
   ../util/prefFile.h ../util/misc.h ../util/DialogF.h \
   ../util/managedList.h ../util/fontsel.h ../util/fileUtils.h \
   ../util/utils.h ../util/clearcase.h
@@ -45,6 +53,7 @@ regexConvert.o: regexConvert.c regexConvert.h
 regularExp.o: regularExp.c regularExp.h
 search.o: search.c search.h nedit.h textBuf.h regularExp.h text.h \
   server.h window.h preferences.h file.h highlight.h ../util/DialogF.h \
+  patternMatch.h \
   ../util/misc.h
 selection.o: selection.c selection.h nedit.h textBuf.h text.h file.h \
   window.h menu.h server.h ../util/DialogF.h ../util/fileUtils.h
@@ -77,7 +86,9 @@ userCmds.o: userCmds.c userCmds.h nedit.h textBuf.h text.h preferences.h \
 window.o: window.c window.h nedit.h textBuf.h textSel.h text.h textDisp.h \
   textP.h menu.h file.h search.h undo.h preferences.h selection.h \
   server.h shell.h macro.h highlight.h smartIndent.h userCmds.h nedit.bm \
-  n.bm windowTitle.h ../util/clearcase.h ../util/misc.h \
+  n.bm windowTitle.h \
+  patternMatchData.h  \
+  ../util/clearcase.h ../util/misc.h \
   ../util/fileUtils.h ../util/utils.h
 windowTitle.o: windowTitle.c windowTitle.h nedit.h textBuf.h \
   preferences.h help.h help_topic.h ../util/prefFile.h ../util/misc.h \

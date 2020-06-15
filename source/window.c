@@ -54,6 +54,7 @@
 #include "windowTitle.h"
 #include "interpret.h"
 #include "rangeset.h"
+#include "patternMatchData.h"
 #include "../util/clearcase.h"
 #include "../util/misc.h"
 #include "../util/fileUtils.h"
@@ -273,7 +274,6 @@ WindowInfo *CreateWindow(const char *name, char *geometry, int iconic)
     window->wrapMode = GetPrefWrap(PLAIN_LANGUAGE_MODE);
     window->overstrike = False;
     window->showMatchingStyle = GetPrefShowMatching();
-    window->matchSyntaxBased = GetPrefMatchSyntaxBased();
     window->showStats = GetPrefStatsLine();
     window->showISearchLine = GetPrefISearchLine();
     window->showLineNumbers = GetPrefLineNums();
@@ -312,6 +312,10 @@ WindowInfo *CreateWindow(const char *name, char *geometry, int iconic)
     window->macroCmdData = NULL;
     window->smartIndentData = NULL;
     window->languageMode = PLAIN_LANGUAGE_MODE;
+
+    /* Pattern Match Feature: assign "PLAIN" string match table*/
+    window->stringMatchTable = FindStringMatchTable(NULL);
+
     window->iSearchHistIndex = 0;
     window->iSearchStartPos = -1;
     window->replaceLastRegexCase   = TRUE;
@@ -3310,7 +3314,6 @@ WindowInfo* CreateDocument(WindowInfo* shellWindow, const char* name)
     window->wrapMode = GetPrefWrap(PLAIN_LANGUAGE_MODE);
     window->overstrike = False;
     window->showMatchingStyle = GetPrefShowMatching();
-    window->matchSyntaxBased = GetPrefMatchSyntaxBased();
     window->highlightSyntax = GetPrefHighlightSyntax();
     window->backlightCharTypes = NULL;
     window->backlightChars = GetPrefBacklightChars();
@@ -3345,6 +3348,12 @@ WindowInfo* CreateDocument(WindowInfo* shellWindow, const char* name)
     window->macroCmdData = NULL;
     window->smartIndentData = NULL;
     window->languageMode = PLAIN_LANGUAGE_MODE;
+
+    /*
+     * Pattern Match Feature:
+     */
+    window->stringMatchTable = FindStringMatchTable(NULL);
+
     window->iSearchHistIndex = 0;
     window->iSearchStartPos = -1;
     window->replaceLastRegexCase   = TRUE;
@@ -3738,7 +3747,6 @@ void RefreshMenuToggleStates(WindowInfo *window)
 #endif
     XmToggleButtonSetState(window->autoSaveItem, window->autoSave, False);
     XmToggleButtonSetState(window->overtypeModeItem, window->overstrike, False);
-    XmToggleButtonSetState(window->matchSyntaxBasedItem, window->matchSyntaxBased, False);
     XmToggleButtonSetState(window->readOnlyItem, IS_USER_LOCKED(window->lockReasons), False);
 
     XtSetSensitive(window->smartIndentItem, 
@@ -4300,6 +4308,9 @@ static void cloneDocument(WindowInfo *window, WindowInfo *orgWin)
     if (window->highlightSyntax)
     	StartHighlighting(window, False);
 
+    /* recycle the pattern match data */
+    window->stringMatchTable = orgWin->stringMatchTable;
+
     /* copy states of original document */
     window->filenameSet = orgWin->filenameSet;
     window->fileFormat = orgWin->fileFormat;
@@ -4317,7 +4328,6 @@ static void cloneDocument(WindowInfo *window, WindowInfo *orgWin)
     window->wrapMode = orgWin->wrapMode;
     SetOverstrike(window, orgWin->overstrike);
     window->showMatchingStyle = orgWin->showMatchingStyle;
-    window->matchSyntaxBased = orgWin->matchSyntaxBased;
 #if 0    
     window->showStats = orgWin->showStats;
     window->showISearchLine = orgWin->showISearchLine;

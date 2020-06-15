@@ -555,7 +555,7 @@ static char *DefaultPatternSets[] = {
         Built-in Pref Vars:\"(?<!\\Y)\\$(?:auto_indent|em_tab_dist|file_format|font_name|font_name_bold|font_name_bold_italic|font_name_italic|highlight_syntax|incremental_backup|incremental_search_line|make_backup_copy|match_syntax_based|overtype_mode|show_line_numbers|show_matching|statistics_line|tab_dist|use_tabs|wrap_margin|wrap_text)>\":::Identifier2::\n\
         Built-in Special Vars:\"(?<!\\Y)\\$(?:[1-9]|list_dialog_button|n_args|read_status|search_end|shell_cmd_status|string_dialog_button|sub_sep)>\":::String1::\n\
         Built-in Subrs:\"<(?:append_file|beep|calltip|clipboard_to_string|dialog|focus_window|get_character|get_pattern_(by_name|at_pos)|get_range|get_selection|get_style_(by_name|at_pos)|getenv|kill_calltip|length|list_dialog|max|min|rangeset_(?:add|create|destroy|get_by_name|includes|info|invert|range|set_color|set_mode|set_name|subtract)|read_file|replace_in_string|replace_range|replace_selection|replace_substring|search|search_string|select|select_rectangle|set_cursor_pos|set_language_mode|set_locked|shell_command|split|string_compare|string_dialog|string_to_clipboard|substring|t_print|tolower|toupper|valid_number|write_file)>\":::Subroutine::\n\
-        Menu Actions:\"<(?:new|open|open-dialog|open_dialog|open-selected|open_selected|close|save|save-as|save_as|save-as-dialog|save_as_dialog|revert-to-saved|revert_to_saved|revert_to_saved_dialog|include-file|include_file|include-file-dialog|include_file_dialog|load-macro-file|load_macro_file|load-macro-file-dialog|load_macro_file_dialog|load-tags-file|load_tags_file|load-tags-file-dialog|load_tags_file_dialog|unload_tags_file|load_tips_file|load_tips_file_dialog|unload_tips_file|print|print-selection|print_selection|exit|undo|redo|delete|select-all|select_all|shift-left|shift_left|shift-left-by-tab|shift_left_by_tab|shift-right|shift_right|shift-right-by-tab|shift_right_by_tab|find|find-dialog|find_dialog|find-again|find_again|find-selection|find_selection|find_incremental|start_incremental_find|replace|replace-dialog|replace_dialog|replace-all|replace_all|replace-in-selection|replace_in_selection|replace-again|replace_again|replace_find|replace_find_same|replace_find_again|goto-line-number|goto_line_number|goto-line-number-dialog|goto_line_number_dialog|goto-selected|goto_selected|mark|mark-dialog|mark_dialog|goto-mark|goto_mark|goto-mark-dialog|goto_mark_dialog|match|select_to_matching|goto_matching|find-definition|find_definition|show_tip|split-window|split_window|close-pane|close_pane|uppercase|lowercase|fill-paragraph|fill_paragraph|control-code-dialog|control_code_dialog|filter-selection-dialog|filter_selection_dialog|filter-selection|filter_selection|execute-command|execute_command|execute-command-dialog|execute_command_dialog|execute-command-line|execute_command_line|shell-menu-command|shell_menu_command|macro-menu-command|macro_menu_command|bg_menu_command|post_window_bg_menu|beginning-of-selection|beginning_of_selection|end-of-selection|end_of_selection|repeat_macro|repeat_dialog|raise_window|focus_pane|set_statistics_line|set_incremental_search_line|set_show_line_numbers|set_auto_indent|set_wrap_text|set_wrap_margin|set_highlight_syntax|set_make_backup_copy|set_incremental_backup|set_show_matching|set_match_syntax_based|set_overtype_mode|set_locked|set_tab_dist|set_em_tab_dist|set_use_tabs|set_fonts|set_language_mode)(?=\\s*\\()\":::Subroutine::\n\
+        Menu Actions:\"<(?:new|open|open-dialog|open_dialog|open-selected|open_selected|close|save|save-as|save_as|save-as-dialog|save_as_dialog|revert-to-saved|revert_to_saved|revert_to_saved_dialog|include-file|include_file|include-file-dialog|include_file_dialog|load-macro-file|load_macro_file|load-macro-file-dialog|load_macro_file_dialog|load-tags-file|load_tags_file|load-tags-file-dialog|load_tags_file_dialog|unload_tags_file|load_tips_file|load_tips_file_dialog|unload_tips_file|print|print-selection|print_selection|exit|undo|redo|delete|select-all|select_all|shift-left|shift_left|shift-left-by-tab|shift_left_by_tab|shift-right|shift_right|shift-right-by-tab|shift_right_by_tab|find|find-dialog|find_dialog|find-again|find_again|find-selection|find_selection|find_incremental|start_incremental_find|replace|replace-dialog|replace_dialog|replace-all|replace_all|replace-in-selection|replace_in_selection|replace-again|replace_again|replace_find|replace_find_same|replace_find_again|goto-line-number|goto_line_number|goto-line-number-dialog|goto_line_number_dialog|goto-selected|goto_selected|mark|mark-dialog|mark_dialog|goto-mark|goto_mark|goto-mark-dialog|goto_mark_dialog|match|select_to_matching|goto_matching|find-definition|find_definition|show_tip|split-window|split_window|close-pane|close_pane|uppercase|lowercase|fill-paragraph|fill_paragraph|control-code-dialog|control_code_dialog|filter-selection-dialog|filter_selection_dialog|filter-selection|filter_selection|execute-command|execute_command|execute-command-dialog|execute_command_dialog|execute-command-line|execute_command_line|shell-menu-command|shell_menu_command|macro-menu-command|macro_menu_command|bg_menu_command|post_window_bg_menu|beginning-of-selection|beginning_of_selection|end-of-selection|end_of_selection|repeat_macro|repeat_dialog|raise_window|focus_pane|set_statistics_line|set_incremental_search_line|set_show_line_numbers|set_auto_indent|set_wrap_text|set_wrap_margin|set_highlight_syntax|set_make_backup_copy|set_incremental_backup|set_show_matching|set_match_syntax_based|set_overtype_mode|set_locked|set_tab_dist|set_em_tab_dist|set_use_tabs|set_fonts|set_language_mode|get_matching)(?=\\s*\\()\":::Subroutine::\n\
         Text Actions:\"<(?:self-insert|self_insert|grab-focus|grab_focus|extend-adjust|extend_adjust|extend-start|extend_start|extend-end|extend_end|secondary-adjust|secondary_adjust|secondary-or-drag-adjust|secondary_or_drag_adjust|secondary-start|secondary_start|secondary-or-drag-start|secondary_or_drag_start|process-bdrag|process_bdrag|move-destination|move_destination|move-to|move_to|move-to-or-end-drag|move_to_or_end_drag|end_drag|copy-to|copy_to|copy-to-or-end-drag|copy_to_or_end_drag|exchange|process-cancel|process_cancel|paste-clipboard|paste_clipboard|copy-clipboard|copy_clipboard|cut-clipboard|cut_clipboard|copy-primary|copy_primary|cut-primary|cut_primary|newline|newline-and-indent|newline_and_indent|newline-no-indent|newline_no_indent|delete-selection|delete_selection|delete-previous-character|delete_previous_character|delete-next-character|delete_next_character|delete-previous-word|delete_previous_word|delete-next-word|delete_next_word|delete-to-start-of-line|delete_to_start_of_line|delete-to-end-of-line|delete_to_end_of_line|forward-character|forward_character|backward-character|backward_character|key-select|key_select|process-up|process_up|process-down|process_down|process-shift-up|process_shift_up|process-shift-down|process_shift_down|process-home|process_home|forward-word|forward_word|backward-word|backward_word|forward-paragraph|forward_paragraph|backward-paragraph|backward_paragraph|beginning-of-line|beginning_of_line|end-of-line|end_of_line|beginning-of-file|beginning_of_file|end-of-file|end_of_file|next-page|next_page|previous-page|previous_page|page-left|page_left|page-right|page_right|toggle-overstrike|toggle_overstrike|scroll-up|scroll_up|scroll-down|scroll_down|scroll_left|scroll_right|scroll-to-line|scroll_to_line|select-all|select_all|deselect-all|deselect_all|focusIn|focusOut|process-return|process_return|process-tab|process_tab|insert-string|insert_string|mouse_pan)>\":::Subroutine::\n\
         Keyword:\"<(?:break|continue|define|delete|else|for|if|in|return|while)>\":::Keyword::\n\
         Braces:\"[{}\\[\\]]\":::Keyword::\n\
@@ -2349,8 +2349,9 @@ void EditHighlightPatterns(WindowInfo *window)
             XmNrightPosition, 99,
             NULL);
  
+    /* Pattern Match Feature: don't include "PLAIN" (4th parameter) */
     HighlightDialog.lmPulldown = CreateLanguageModeMenu(lmForm, langModeCB,
-    	    NULL);
+	    NULL, FALSE);
     n = 0;
     XtSetArg(args[n], XmNspacing, 0); n++;
     XtSetArg(args[n], XmNmarginWidth, 0); n++;
@@ -2884,8 +2885,9 @@ void UpdateLanguageModeMenu(void)
     	return;
 
     oldMenu = HighlightDialog.lmPulldown;
+    /* Pattern Match Feature: don't include "PLAIN" (4th parameter) */
     HighlightDialog.lmPulldown = CreateLanguageModeMenu(
-    	    XtParent(XtParent(oldMenu)), langModeCB, NULL);
+	    XtParent(XtParent(oldMenu)), langModeCB, NULL, FALSE);
     XtVaSetValues(XmOptionButtonGadget(HighlightDialog.lmOptMenu),
     	    XmNsubMenuId, HighlightDialog.lmPulldown, NULL);
     SetLangModeMenu(HighlightDialog.lmOptMenu, HighlightDialog.langModeName);
@@ -2944,6 +2946,9 @@ static void langModeCB(Widget w, XtPointer clientData, XtPointer callData)
         {
             SetLangModeMenu(HighlightDialog.lmOptMenu,
                     HighlightDialog.langModeName);
+
+            freePatternSet(newPatSet);
+
             return;
         }
         if (resp == 1)
@@ -3043,6 +3048,8 @@ static void restoreCB(Widget w, XtPointer clientData, XtPointer callData)
             "patterns for language mode %s?", "Discard", "Cancel",
             HighlightDialog.langModeName) == 2)
     {
+        freePatternSet(defaultPatSet);
+
         return;
     }
     

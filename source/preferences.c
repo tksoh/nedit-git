@@ -46,6 +46,10 @@
 #include "windowTitle.h"
 #include "server.h"
 #include "tags.h"
+
+/* Pattern Match Feature */
+#include "patternMatchData.h"
+
 #include "../util/prefFile.h"
 #include "../util/misc.h"
 #include "../util/DialogF.h"
@@ -272,7 +276,6 @@ static struct prefData {
     int emTabDist;		/* non-zero tab dist. if emulated tabs are on */
     int insertTabs;		/* whether to use tabs for padding */
     int showMatchingStyle;	/* how to flash matching parenthesis */
-    int matchSyntaxBased;	/* use syntax info to match parenthesis */
     int highlightSyntax;    	/* whether to highlight syntax by default */
     int smartTags;  	    	/* look for tag in current window first */
     int alwaysCheckRelativeTagsSpecs; /* for every new opened file of session */
@@ -339,6 +342,7 @@ static struct {
     char *smartIndent;
     char *smartIndentCommon;
     char *shell;
+    char *matchPattern;
 } TempStringPrefs;
 
 /* preference descriptions for SavePreferences and RestorePreferences. */
@@ -844,6 +848,72 @@ static PrefDescripRec PrefDescrip[] = {
 	Matlab:Default", &TempStringPrefs.smartIndent, NULL, True},
     {"smartIndentInitCommon", "SmartIndentInitCommon", PREF_ALLOC_STRING,
         "Default", &TempStringPrefs.smartIndentCommon, NULL, True},
+/* Pattern Match Feature: matchPatterns resource added */
+#ifdef VMS
+/* The VAX compiler can't compile Java-Script's definition in highlightData.c */
+    {"matchPatterns", "MatchPatterns", PREF_ALLOC_STRING,
+       "PLAIN:Default\n\
+        Ada:Default\n\
+        Awk:Default\n\
+        C++:Default\n\
+        C:Default\n\
+        CSS:Default\n\
+        Csh:Default\n\
+        Fortran:Default\n\
+        Java:Default\n\
+        LaTeX:Default\n\
+        Lex:Default\n\
+        Makefile:Default\n\
+        Matlab:Default\n\
+        NEdit Macro:Default\n\
+        Pascal:Default\n\
+        Perl:Default\n\
+        PostScript:Default\n\
+        Python:Default\n\
+        Regex:Default\n\
+        SGML HTML:Default\n\
+        SQL:Default\n\
+        Sh Ksh Bash:Default\n\
+        Tcl:Default\n\
+        VHDL:Default\n\
+        Verilog:Default\n\
+        XML:Default\n\
+        X Resources:Default\n\
+        Yacc:Default\n",
+        &TempStringPrefs.matchPattern, NULL, True},
+#else
+    {"matchPatterns", "MatchPatterns", PREF_ALLOC_STRING,
+       "PLAIN:Default\n\
+        Ada:Default\n\
+        Awk:Default\n\
+        C++:Default\n\
+        C:Default\n\
+        CSS:Default\n\
+        Csh:Default\n\
+        Fortran:Default\n\
+        Java:Default\n\
+        JavaScript:Default\n\
+        LaTeX:Default\n\
+        Lex:Default\n\
+        Makefile:Default\n\
+        Matlab:Default\n\
+        NEdit Macro:Default\n\
+        Pascal:Default\n\
+        Perl:Default\n\
+        PostScript:Default\n\
+        Python:Default\n\
+        Regex:Default\n\
+        SGML HTML:Default\n\
+        SQL:Default\n\
+        Sh Ksh Bash:Default\n\
+        Tcl:Default\n\
+        VHDL:Default\n\
+        Verilog:Default\n\
+        XML:Default\n\
+        X Resources:Default\n\
+        Yacc:Default\n",
+        &TempStringPrefs.matchPattern, NULL, True},
+#endif
     {"autoWrap", "AutoWrap", PREF_ENUM, "Continuous",
     	&PrefData.wrapStyle, AutoWrapTypes, True},
     {"wrapMargin", "WrapMargin", PREF_INT, "0",
@@ -858,8 +928,6 @@ static PrefDescripRec PrefDescrip[] = {
     	&PrefData.saveOldVersion, NULL, True},
     {"showMatching", "ShowMatching", PREF_ENUM, "Delimiter",
  	&PrefData.showMatchingStyle, ShowMatchingTypes, True},
-    {"matchSyntaxBased", "MatchSyntaxBased", PREF_BOOLEAN, "True",
- 	&PrefData.matchSyntaxBased, NULL, True},
     {"highlightSyntax", "HighlightSyntax", PREF_BOOLEAN, "True",
     	&PrefData.highlightSyntax, NULL, True},
     {"backlightChars", "BacklightChars", PREF_BOOLEAN, "False",
@@ -1216,6 +1284,7 @@ static void lmApplyCB(Widget w, XtPointer clientData, XtPointer callData);
 static void lmCloseCB(Widget w, XtPointer clientData, XtPointer callData);
 static int lmDeleteConfirmCB(int itemIndex, void *cbArg);
 static int updateLMList(void);
+static int isOldLanguageMode(const char *lmDialogName, const char *oldModeName);
 static languageModeRec *copyLanguageModeRec(languageModeRec *lm);
 static void *lmGetDisplayedCB(void *oldItem, int explicitRequest, int *abort,
     	void *cbArg);
@@ -1399,7 +1468,12 @@ static void translatePrefFormats(int convertOld, int fileVer)
 	NEditFree(TempStringPrefs.smartIndentCommon);
 	TempStringPrefs.smartIndentCommon = NULL;
     }
-    
+    if (TempStringPrefs.matchPattern != NULL) {
+	LoadMatchPatternString(TempStringPrefs.matchPattern);
+	XtFree(TempStringPrefs.matchPattern);
+	TempStringPrefs.matchPattern = NULL;
+    }
+
     /* translate the font names into fontLists suitable for the text widget */
     font = XLoadQueryFont(TheDisplay, PrefData.fontString);
     PrefData.fontList = font==NULL ? NULL :
@@ -1478,6 +1552,7 @@ void SaveNEditPrefs(Widget parent, int quietly)
     TempStringPrefs.styles = WriteStylesString();
     TempStringPrefs.smartIndent = WriteSmartIndentString();
     TempStringPrefs.smartIndentCommon = WriteSmartIndentCommonString();
+    TempStringPrefs.matchPattern = WriteMatchPatternString();
     strcpy(PrefData.fileVersion, PREF_FILE_VERSION);
 
     if (!SavePreferences(XtDisplay(parent), prefFileName, HeaderText,
@@ -1497,6 +1572,7 @@ void SaveNEditPrefs(Widget parent, int quietly)
     NEditFree(TempStringPrefs.styles);
     NEditFree(TempStringPrefs.smartIndent);
     NEditFree(TempStringPrefs.smartIndentCommon);
+    NEditFree(TempStringPrefs.matchPattern);
     
     PrefsHaveChanged = False;
 }
@@ -1880,16 +1956,6 @@ ShowMatchingStyle GetPrefShowMatching(void)
     if (PrefData.showMatchingStyle >= N_SHOW_MATCHING_STYLES) 
 	PrefData.showMatchingStyle -= N_SHOW_MATCHING_STYLES;
     return (ShowMatchingStyle)(PrefData.showMatchingStyle);
-}
-
-void SetPrefMatchSyntaxBased(int state)
-{
-    setIntPref(&PrefData.matchSyntaxBased, state);
-}
-
-int GetPrefMatchSyntaxBased(void)
-{
-    return PrefData.matchSyntaxBased;
 }
 
 void SetPrefHighlightSyntax(Boolean state)
@@ -3346,6 +3412,21 @@ static int lmDeleteConfirmCB(int itemIndex, void *cbArg)
         return False;
     }
 
+    /* Pattern Match Feature: don't allow deletion if data will be lost */
+    if (LMHasStringMatchTable(LMDialog.languageModeList[itemIndex]->name))
+    {
+        DialogF(DF_WARN, LMDialog.shell, 1, "Matching Patterns exist",
+                "This language mode has matching patterns\n"
+                "defined.  Please delete the patterns first,\n"
+                "in Preferences -> Default Settings ->\n"
+                "Show Matching (..) -> Matching Patterns ..,\n"
+                "before proceeding here.", "Dismiss");
+        return False;
+    }
+
+    /* delete "empty" string match table related to language mode to be deleted */
+    DeleteStringMatchTable(LMDialog.languageModeList[itemIndex]->name);
+
     return True;
 }
 
@@ -3366,15 +3447,15 @@ static int updateLMList(void)
     	return False;
 
     /* Fix up language mode indices in all open windows (which may change
-       if the currently selected mode is deleted or has changed position),
-       and update word delimiters */
+       if the currently selected mode is renamed, deleted or has changed
+       position), and update word delimiters */
     for (window=WindowList; window!=NULL; window=window->next) {
 	if (window->languageMode != PLAIN_LANGUAGE_MODE) {
             oldLanguageMode = window->languageMode;
     	    oldModeName = LanguageModes[window->languageMode]->name;
     	    window->languageMode = PLAIN_LANGUAGE_MODE;
     	    for (i=0; i<LMDialog.nLanguageModes; i++) {
-    		if (!strcmp(oldModeName, LMDialog.languageModeList[i]->name)) {
+                if (isOldLanguageMode(LMDialog.languageModeList[i]->name, oldModeName)) {
     	    	    newDelimiters = LMDialog.languageModeList[i]->delimiters;
     	    	    if (newDelimiters == NULL)
     	    	    	newDelimiters = GetPrefDelimiters();
@@ -3404,6 +3485,7 @@ static int updateLMList(void)
     	    *strchr(LMDialog.languageModeList[i]->name, ':') = '\0';
     	    RenameHighlightPattern(LMDialog.languageModeList[i]->name, newName);
     	    RenameSmartIndentMacros(LMDialog.languageModeList[i]->name, newName);
+            RenameStringMatchTable(LMDialog.languageModeList[i]->name, newName);
     	    memmove(LMDialog.languageModeList[i]->name, newName,
     	    	    strlen(newName) + 1);
     	    ChangeManagedListData(LMDialog.managedListW);
@@ -3421,13 +3503,24 @@ static int updateLMList(void)
        user menu items */
     UpdateUserMenuInfo();
 
+    /* Pattern Match Feature: assign standard string match table to new
+       language modes */
+    for (i=0; i<NLanguageModes; i++) {
+        if (FindStringMatchTable(LanguageModeName(i)) == NULL)
+            AssignStandardStringMatchTable(LanguageModeName(i));
+    }
+
     /* Update the menus in the window menu bars and load any needed
-        calltips files */
+        calltips files and reassign string match tables */
     for (window=WindowList; window!=NULL; window=window->next) {
     	updateLanguageModeSubmenu(window);
         if (window->languageMode != PLAIN_LANGUAGE_MODE &&
                 LanguageModes[window->languageMode]->defTipsFile != NULL)
             AddTagsFile(LanguageModes[window->languageMode]->defTipsFile, TIP);
+
+        window->stringMatchTable =
+            FindStringMatchTable(LanguageModeName(window->languageMode));
+
         /* cache user menus: Rebuild all user menus of this window */
         RebuildAllMenus(window);
     }
@@ -3436,10 +3529,30 @@ static int updateLMList(void)
     UpdateLanguageModeMenu();
     /* The same for the smart indent macro dialog */
     UpdateLangModeMenuSmartIndent(); 
+    /* The same for the match pattern dialog */
+    UpdateLanguageModeMenuMatchPattern();
     /* Note that preferences have been changed */
     MarkPrefsChanged();
 
     return True;
+}
+
+/*
+** Returns true, if the given old language mode name matches the
+** given (new) language mode dialog name.
+*/
+static int isOldLanguageMode(const char *lmDialogName, const char *oldModeName)
+{
+    char *c = strchr(lmDialogName, ':');
+    int isOldMode = !strcmp(oldModeName, lmDialogName);
+
+    if (!isOldMode && c != NULL) {
+        *c = '\0';
+        isOldMode = !strcmp(lmDialogName, oldModeName);
+        *c = ':';
+    }
+
+    return isOldMode;
 }
 
 static void *lmGetDisplayedCB(void *oldItem, int explicitRequest, int *abort,
@@ -4430,6 +4543,10 @@ static void reapplyLanguageMode(WindowInfo *window, int mode, int forceDefaults)
         DeleteTagsFile( LanguageModes[oldMode]->defTipsFile, TIP, False );
     }
     
+    /* Pattern Match Feature: Assign the match pattern related to
+       the language mode */
+    window->stringMatchTable = FindStringMatchTable(LanguageModeName(mode));
+
     /* Set delimiters for all text widgets */
     if (mode == PLAIN_LANGUAGE_MODE || LanguageModes[mode]->delimiters == NULL)
     	delimiters = GetPrefDelimiters();
@@ -5046,14 +5163,31 @@ char *ReadSymbolicFieldTextWidget(Widget textW, const char *fieldName, int silen
 /*
 ** Create a pulldown menu pane with the names of the current language modes.
 ** XmNuserData for each item contains the language mode name.
+** Pattern Match Feature: if "includePlain" is set, then 1st menu entry
+** holds "PLAIN".
 */
-Widget CreateLanguageModeMenu(Widget parent, XtCallbackProc cbProc, void *cbArg)
+Widget CreateLanguageModeMenu(
+  Widget parent,
+  XtCallbackProc cbProc,
+  void *cbArg,
+  int includePlain)
 {
     Widget menu, btn;
     int i;
     XmString s1;
 
     menu = CreatePulldownMenu(parent, "languageModes", NULL, 0);
+
+    if (includePlain) {
+        btn = XtVaCreateManagedWidget("languageMode", xmPushButtonGadgetClass,
+                menu,
+                XmNlabelString, s1=XmStringCreateSimple("PLAIN"),
+                XmNmarginHeight, 0,
+                XmNuserData, (void *)"PLAIN", NULL);
+        XmStringFree(s1);
+        XtAddCallback(btn, XmNactivateCallback, cbProc, cbArg);
+    }
+
     for (i=0; i<NLanguageModes; i++) {
         btn = XtVaCreateManagedWidget("languageMode", xmPushButtonGadgetClass,
         	menu,

@@ -861,8 +861,9 @@ Programming with NEdit
   Though general in appearance, NEdit has many features intended specifically
   for programmers.  Major programming-related topics are listed in separate
   sections under the heading: "Features for Programming": Syntax_Highlighting_,
-  Tab_Stops/Emulated_Tab_Stops_, Finding_Declarations_(ctags)_, Calltips_, and
-  Auto/Smart_Indent_.  Minor topics related to programming are discussed below:
+  Tab_Stops/Emulated_Tab_Stops_, Finding_Declarations_(ctags)_, Calltips_,
+  Matching_Parentheses_ and Auto/Smart_Indent_. Minor topics related to
+  programming are discussed below:
 
 3>Language Modes
 
@@ -919,26 +920,6 @@ Programming with NEdit
   comma.  (e.g. Enter "100,12" for line 100 column 12.)  If you want to go to
   a column on the current line just leave out the line number.  (e.g. Enter
   ",45" to go the column 45 on the current line.)
-
-3>Matching Parentheses
-
-  To help you inspect nested parentheses, brackets, braces, quotes, and other
-  characters, NEdit has both an automatic parenthesis matching mode, and a Goto
-  Matching command.  Automatic parenthesis matching is activated when you type,
-  or move the insertion cursor after a parenthesis, bracket, or brace.  It
-  momentarily highlights either the opposite character ('Delimiter') or the
-  entire expression ('Range') when the opposite character is visible in the
-  window. To find a matching character anywhere in the file, select it or
-  position the cursor after it, and choose Goto Matching from the Search menu.
-  If the character matches itself, such as a quote or slash, select the first
-  character of the pair.  NEdit will match {, (, [, <, ", ', `, /, and \.
-  Holding the Shift key while typing the accelerator key (Shift+Ctrl+M, by
-  default), will select all of the text between the matching characters.
-
-  When syntax highlighting is enabled, the matching routines can optionally
-  make use of the syntax information for improved accuracy. In that case,
-  a brace inside a highlighted string will not match a brace inside a comment,
-  for instance.
 
 3>Opening Included Files
 
@@ -1216,6 +1197,39 @@ Syntax Highlighting
   you are using, this may or may not be noticeable.  A typing delay is also
   possible, but unlikely if you are only using the built-in patterns.
    ----------------------------------------------------------------------
+
+Matching Parentheses
+--------------------
+
+3>Matching Parentheses (Patterns)
+
+  To help you inspect nested parentheses (e.g. brackets, braces, quotes
+  etc.) or nested constructs (e.g. "begin" .. "end"), NEdit has both an
+  automatic parenthesis matching mode, and a Goto Matching command.
+
+  A matching pattern can be a single character (like '(', ')'), a literal
+  string (like '#ifdef', '#endif') or a regular expression (like
+  '\</.*\>').
+
+  Automatic parenthesis matching is activated when you type, or move the
+  insertion cursor after a parenthesis, bracket, or brace. It momentarily
+  highlights either the opposite pattern ('Delimiter') or the entire expression
+  ('Range') when the opposite pattern is visible in the window. To find a
+  matching pattern anywhere in the file, select it or position the cursor after
+  it, and choose Goto Matching from the Search menu. If the pattern matches
+  itself, such as a quote or slash, select the first pattern of the pair.
+  Holding the Shift key while typing the accelerator key (Shift+Ctrl+M, by
+  default), will select all of the text between the matching patterns.
+
+  When syntax highlighting is enabled, the matching routines can optionally
+  make use of the syntax information for improved accuracy. In that case,
+  a brace inside a highlighted string will not match a brace inside a comment,
+  for instance.
+
+  Matching patterns are language dependent. Matching patterns can be
+  configured by the user. If no matching patterns are available for the
+  language that you want to use, you can create new patterns relatively quickly.
+  The Help section "Matching_Patterns_" under "Customizing", has details.
 
 Finding Declarations (ctags)
 ----------------------------
@@ -2470,9 +2484,6 @@ Macro Subroutines
   Contains the current preference for showing matching pairs,
   such as "[]" and "{}" pairs. Can be "off", "delimiter", or "range".
 
-**$match_syntax_based**
-  Whether pair matching should use syntax information, if available.
-
 **$statistics_line**
   Has a value of 1 if the statistics line is shown, otherwise 0.
 
@@ -2583,6 +2594,15 @@ Macro Subroutines
 **get_character( position )**
   Returns the single character at the position
   indicated by the first argument to the routine from the current window.
+
+**get_matching( position )**
+  Find a matching pattern string related to the given position.
+  Returns info about matching pattern within an array. The array has
+  the following keys: **pos** (position of the first character of the
+  matching pattern), **len** (length of the matching pattern), **direction**
+  (direction where the matching pattern was found: ~0~ = forward;
+  ~1~ = backward). If no matching pattern was found, then array element
+  of **pos** holds ~-1~, **len** holds ~0~ and **direction** holds ~-1~.
 
 **get_range( start, end )**
   Returns the text between a starting and ending position from the current
@@ -3264,9 +3284,6 @@ Action Routines
 **set_show_matching( "off" | "delimiter" | "range" )**
   Set show matching (...) mode for the current window.
 
-**set_match_syntax_based( [0 | 1] )**
-  Set whether matching should be syntax based for the current window.
-
 **set_statistics_line( [0 | 1] )**
   Show or hide the statistics line for the current window.
   A value of 0 turns it off and a value of 1 turns it on.
@@ -3733,10 +3750,6 @@ Preferences
   insertion cursor is positioned after it. Delimiter only highlights the
   matching delimiter, while Range highlights the whole range of text between
   the matching delimiters.
-
-  Optionally, the matching can make use of syntax information if syntax
-  highlighting is enabled. Alternatively, the matching is purely character
-  based. In general, syntax based matching results in fewer false matches.
 
 **Overtype**
   In overtype mode, new characters entered replace the characters in front of
@@ -4819,6 +4832,185 @@ Smart Indent Macros
   keystroke typed, so if you try to get too fancy, you may degrade performance.
    ----------------------------------------------------------------------
 
+Matching Patterns
+-----------------
+
+3>Writing Matching Pattern Sets
+
+  Matching Patterns Sets are groups of single characters (like '(', ')'),
+  literal strings (like '#ifdef', '#endif') or a regular expressions (like
+  '\</.*\>'), which match to each other.
+
+  Examples: An open bracket '(' belongs a closing one ')'.
+  Or: '#ifdef'(start), '#ifndef'(alternative start), '#ifndef' (another
+  alternative start),'#elif' (optional), '#else' (optional), '#endif' (end)
+  define a "#ifdef statement matching pattern".
+
+  "Opposite pattern highlighting" or "Goto Matching" features are implemented
+  in NEdit using this matching pattern sets (see Matching_Parentheses_ under
+  the heading of Features for Programming).
+
+  During definition of a new language mode a standard matching pattern set
+  is assigned to this new language mode.
+
+  To modify a matching pattern set, select "Matching Patterns ..." from
+  "Show Matching (..)" sub-section of the "Default Settings" sub-menu
+  of the "Preferences" menu.
+
+  A matching pattern set is a collection of matching patterns.
+
+  A matching pattern usually consists out of string patterns.
+
+  The name of a matching pattern set needs to be defined within field "Matching
+  Pattern Name".
+
+4>Attributes of matching pattern
+
+  A matching pattern holds two types of attributes:
+
+* "Matching Pattern Type" and
+* "Global Attributes"
+
+  The matching pattern type specifies the kind of the matching pattern
+  entry:
+
+* "Individual" or
+* "Sub-pattern" or
+* "Context group"
+
+  Each matching pattern can be defined as "Individual" or as "Sub-pattern".
+  A "Sub-pattern" belongs to a context group. A context group is simply a
+  collection of sub-patterns.
+
+  During search for a corresponding pattern, an "Individual" matching pattern
+  does not care about nesting of other matching patterns.
+
+  If a matching pattern out of a "Context group" is searched, then all
+  sub-pattern sets defined in this group are taken into account during the
+  search.
+
+  In fact, "Individual" matching pattern search is faster than "Context group" /
+  "Sub-pattern" search. "Context group" / "Sub-pattern" search results in fewer
+  false matches.
+
+  To define a context group, set "Matching Pattern Type" to "Context group".
+  Select out of "Sub-Pattern Name" pop-up field all sub-patterns, which
+  should be placed into this group. **Note**: all "Sub-pattern" used by a context
+  group must be defined **before** the context group itself.
+
+  "Global Attributes" of a matching pattern are
+
+* "Skip content between start / end pattern"
+* "Flash matching pattern"
+* "Syntax based"
+
+  If "Skip content between start / end pattern" is checked, then all text
+  between the first / last string pattern of the related matching pattern is
+  not scanned for other string patterns. This is useful for specifying comments.
+
+  "Flash matching pattern" indicates, if the string patterns are flashed during
+  typing. If not checked, then only the "Goto Matching" feature works for the
+  related matching pattern. Note: if lots of "Flash matching pattern" are
+  specified, then this may slow down the performance of NEdit: after each
+  character typed all "Flash matching pattern" are scanned for being
+  applicable ...
+
+  "Syntax based" defines, if the matching pattern can make use of syntax
+  information if syntax highlighting is enabled. Alternatively, the matching is
+  purely character based. In general, syntax based matching results in fewer
+  false matches.
+
+4>Content of matching pattern
+
+  An "Individual" pattern or a "Sub-pattern" may consist out of only one string
+  pattern (e.g. double quotes '"'). Such a pattern is called "mono pattern".
+  You can imagine, that a match for a mono pattern is hard to find. A matching
+  mono pattern search is always started in forward direction. If no match is
+  found in forward direction, a backward search is started. If the "Global
+  Attribute" "Syntax based" is selected for a mono pattern, then the character
+  before / after the match is checked to have the same highlighting style than
+  the pattern itself. This may help to determine the correct match for a mono
+  pattern.
+
+  Usually a matching pattern holds two string patterns (e.g. 'begin' and
+  'end'). One ('begin') is the start pattern. The other one ('end') is the
+  end pattern. If the cursor is located behind the start pattern, then a
+  corresponding end pattern is searched (in forward direction). If the
+  cursor is located behind the end pattern, then a start pattern is search
+  (in backward direction):
+
+!   +--> start ---> end --+
+!   +-----------<---------+
+
+  Alternative start / end patterns can be defined. In this case one of the
+  start / end patterns must be in front of the cursor to detect one of the
+  related end / start patterns:
+
+!     +-> start1 -+   +-> end1 -+
+!   +-+-> start2 -+---+         +--+
+!   + +-> start3 -+   +-> end2 -+  |
+!   +---------------<-------------+
+
+  At least also "middle" patterns can be defined (e.g. middle patterns
+  'elif' or 'else'). If the cursor is located behind a middle pattern then a
+  next middle pattern or the end pattern is searched in forward direction:
+
+!               +-----<-----+
+!   +--> start -+-> middle -+-> end --+
+!   +-----------<---------------------+
+
+4>String pattern
+
+  A string pattern holds three attributes:
+
+* "String Pattern Type"
+* "Word Boundary"
+* "String Attributes"
+
+  String Pattern Type specifies if the related string pattern is
+  a "start", middle, or "end" pattern (see above).
+
+  Word boundary defines, if before / after a string pattern a delimiter must be
+  located ("Both" = pattern is framed by delimiters. "Left" = before pattern
+  must be a delimiter. "Right" = after pattern must be a delimiter. "None" =
+  there must be no delimiter before or after pattern).
+
+  There are two "String Attributes":
+
+* "Case Sensitive"
+* "Regular Expression"
+
+  If "Case Sensitive" is checked (= default), then the matching pattern search
+  concerning this string pattern differs between  upper / lower case of the
+  characters. If "Case Sensitive" is not set, then the case of the checked
+  characters is not considered.
+
+  "Regular Expression" indicates, that string pattern is treated as
+  regular expression (if "Regular Expression" is checked) or as literal
+  string (if "Regular Expression" is not checked).
+
+4>Regular Expression String Pattern
+
+  Syntax of regular expression is described by NEdit Help menu item
+  Regular_Expressions_. Following deviations from this syntax are
+  existing concerning string patterns:
+
+5>Capturing Parentheses
+
+  Capturing Parentheses inside string patterns are of the form `(*n<regex>)',
+  where n = 1 .. 9. Standard "capturing parentheses" of form `(<regex>)' are
+  treated as "non-capturing parentheses" by the matching pattern feature.
+  "n" defines the **global** backreference number, which can be used inside any string
+  pattern of the same matching pattern (= set of string patterns). So
+  matching patterns like "\<(*1[^/>])\>" (start string pattern) and "\</\1\>"
+  (end string pattern) are possible. This matching pattern will match e.g.
+  <body> .. </body> but will not match <body> .. </head>.
+
+5>Non-Capturing Parentheses
+
+  As described above: parentheses constructs like (<regex>) are treated
+  as `(?:<regex>)' (non-capturing parentheses) by the matching pattern feature.
+
 NEdit Command Line
 ------------------
 
@@ -5851,6 +6043,7 @@ Problems/Defects
 .. Menu:   Syntax Highlighting              # syntax
 .. Menu:   Finding Declarations (ctags)     # tags
 .. Menu:   Calltips                         # calltips
+.. Menu:   Matching Parentheses             # pattern_matching
 
 .. Menu: Regular Expressions                # regex
 .. Menu:   Basic Regular Expression Syntax  # basicSyntax
@@ -5875,6 +6068,7 @@ Problems/Defects
 .. Menu:   Key Binding                      # binding
 .. Menu:   Highlighting Patterns            # patterns
 .. Menu:   Smart Indent Macros              # smart_indent
+.. Menu:   Matching Patterns                # matching_patterns
 
 .. Menu: NEdit Command Line                 # command_line
 .. Menu: Client/Server Mode                 # server

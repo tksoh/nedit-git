@@ -989,9 +989,9 @@ void EditSmartIndentMacros(WindowInfo *window)
 	    XmNtopPosition, 1,
 	    XmNrightAttachment, XmATTACH_POSITION,
 	    XmNrightPosition, 99, NULL);
- 
+    /* Pattern Match Feature: don't include "PLAIN" (4th parameter) */
     SmartIndentDialog.lmPulldown = CreateLanguageModeMenu(lmForm, langModeCB,
-    	    NULL);
+	    NULL, FALSE);
     n = 0;
     XtSetArg(args[n], XmNspacing, 0); n++;
     XtSetArg(args[n], XmNmarginWidth, 0); n++;
@@ -2159,8 +2159,9 @@ void UpdateLangModeMenuSmartIndent(void)
     	return;
 
     oldMenu = SmartIndentDialog.lmPulldown;
+    /* Pattern Match Feature: don't include "PLAIN" (4th parameter) */
     SmartIndentDialog.lmPulldown = CreateLanguageModeMenu(
-    	    XtParent(XtParent(oldMenu)), langModeCB, NULL);
+	    XtParent(XtParent(oldMenu)), langModeCB, NULL, FALSE);
     XtVaSetValues(XmOptionButtonGadget(SmartIndentDialog.lmOptMenu),
     	    XmNsubMenuId, SmartIndentDialog.lmPulldown, NULL);
     SetLangModeMenu(SmartIndentDialog.lmOptMenu, SmartIndentDialog.langModeName);

@@ -108,8 +108,6 @@ void SetPrefInsertTabs(int state);
 int GetPrefInsertTabs(void);
 void SetPrefShowMatching(ShowMatchingStyle state);
 ShowMatchingStyle GetPrefShowMatching(void);
-void SetPrefMatchSyntaxBased(int state);
-int GetPrefMatchSyntaxBased(void);
 void SetPrefHighlightSyntax(Boolean state);
 Boolean GetPrefHighlightSyntax(void);
 void SetPrefBacklightChars(int state);
@@ -185,7 +183,7 @@ int FindLanguageMode(const char *languageName);
 void UnloadLanguageModeTipsFile(WindowInfo *window);
 void DetermineLanguageMode(WindowInfo *window, int forceNewDefaults);
 Widget CreateLanguageModeMenu(Widget parent, XtCallbackProc cbProc,
-	void *cbArg);
+	void *cbArg, int includePlain);
 void SetLangModeMenu(Widget optMenu, const char *modeName);
 void CreateLanguageModeSubMenu(WindowInfo* window, const Widget parent,
         const char* name, const char* label, char mnemonic);
