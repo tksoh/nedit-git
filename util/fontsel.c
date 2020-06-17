@@ -647,16 +647,22 @@ int sortby (const void * a, const void * b) {
 */
 int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
 {
+    char        family[TEMP_BUF_SIZE];
+    char        style[TEMP_BUF_SIZE];
+    char        fsize[TEMP_BUF_SIZE];
     char        buff[TEMP_BUF_SIZE];
     char        **fontData;     /* font name info  */
     int         i, numFonts, curSize, size;
     int         found = False, lastFontIndex=-1, inPixel;
     char        starFont[TEMP_BUF_SIZE];
     FontSized   fontsizes[MAX_NUM_FONTS];
+    int         numFontsMatched;
 
     inPixel = 0;
-    getSizePart(font, buff, inPixel);
-    curSize = atoi(buff);
+    getFontPart(font, family);
+    getStylePart(font, style);
+    getSizePart(font, fsize, inPixel);
+    curSize = atoi(fsize);
     if (curSize <1) {
     	inPixel = 1;
     	getSizePart(font, buff, inPixel);
@@ -671,22 +677,36 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
         replaceFontField(starFont, "*", 12, TEMP_BUF_SIZE);
     
     /* XListFonts return fontlist in random order, so we need to sort them first */
-    fontData = XListFonts(XtDisplay(w), starFont, MAX_NUM_FONTS, &numFonts);
+    fontData = XListFonts(XtDisplay(w), 
+        		  "-*-*-*-*-*-*-*-*-*-*-*-*-*-*", 
+        		  MAX_NUM_FONTS, &numFonts);
     if (!fontData) {
 	return False;
     }
     
-    for (i = 0; i < numFonts && i < MAX_ENTRIES_IN_LIST; i++) {
+    for (i = 0, numFontsMatched = 0; i < numFonts && i < MAX_ENTRIES_IN_LIST; i++) {
     	char *fData = fontData[i];
-	/* printf("[%d] %s\n", i, fData);   debugging code */
-	getSizePart(fData, buff, inPixel);
-	fontsizes[i].size = atoi(buff);
-	fontsizes[i].fontname = fData;
+	char fbuff[TEMP_BUF_SIZE];
+	char szbuff[TEMP_BUF_SIZE];
+	char stbuff[TEMP_BUF_SIZE];
+	char awbuff[TEMP_BUF_SIZE];
+	int sz;
+
+	getFontPart(fData, fbuff);
+	getStylePart(fData, stbuff);
+   	getStringComponent(fData, 12, awbuff);
+        if (strcmp(fbuff, family) == 0 && strcmp(stbuff, style) == 0 &&
+		atoi(awbuff) > 0) {
+	    getSizePart(fData, szbuff, inPixel);
+	    fontsizes[numFontsMatched].size = atoi(szbuff);
+	    fontsizes[numFontsMatched].fontname = fData;
+	    numFontsMatched++;
+        }
     }
-    qsort(fontsizes, numFonts, sizeof(FontSized), sortby);
+    qsort(fontsizes, numFontsMatched, sizeof(FontSized), sortby);
 
     /* look for the next smaller/larger font */
-    for (i = 0; i < numFonts && i < MAX_ENTRIES_IN_LIST; i++) {
+    for (i = 0; i < numFontsMatched; i++) {
 	size = fontsizes[i].size;
 	if (larger) {
 	    if (size>curSize) {
