@@ -669,14 +669,6 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
     	curSize = atoi(buff);
     }
     
-    strcpy(starFont, font);
-    replaceFontField(starFont, "*", 7, TEMP_BUF_SIZE);
-    replaceFontField(starFont, "*", 8, TEMP_BUF_SIZE);
-    getStringComponent(font, 11, buff);
-    if (strlen(buff) == 1 && isalpha(buff[0]))
-        replaceFontField(starFont, "*", 12, TEMP_BUF_SIZE);
-    
-    /* XListFonts return fontlist in random order, so we need to sort them first */
     fontData = XListFonts(XtDisplay(w), 
         		  "-*-*-*-*-*-*-*-*-*-*-*-*-*-*", 
         		  MAX_NUM_FONTS, &numFonts);
@@ -703,6 +695,8 @@ int GetZoomFont(Widget w, const char *font, char *newFont, int larger)
 	    numFontsMatched++;
         }
     }
+
+    /* XListFonts return fontlist in random order, so we need to sort them first */
     qsort(fontsizes, numFontsMatched, sizeof(FontSized), sortby);
 
     /* look for the next smaller/larger font */
