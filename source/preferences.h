@@ -201,6 +201,7 @@ int GetPrefReplaceDefScope(void);
 void SetPrefTitleFormat(const char* format);
 const char* GetPrefTitleFormat(void);
 int GetPrefOverrideVirtKeyBindings(void);
+int GetPrefLangModeScanSize(void);
 int GetPrefTruncSubstitution(void);
 int GetPrefOpenInTab(void);
 void SetPrefUndoModifiesSelection(Boolean);

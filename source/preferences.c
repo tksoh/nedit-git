@@ -325,6 +325,7 @@ static struct prefData {
     Boolean honorSymlinks;
     int truncSubstitution;
     Boolean forceOSConversion;
+    int langModeScanSize;
 } PrefData;
 
 /* Temporary storage for preferences strings which are discarded after being
@@ -1073,7 +1074,9 @@ static PrefDescripRec PrefDescrip[] = {
     {"truncSubstitution", "TruncSubstitution", PREF_ENUM, "Fail",
             &PrefData.truncSubstitution, TruncSubstitutionModes, False},
     {"honorSymlinks", "HonorSymlinks", PREF_BOOLEAN, "True",
-            &PrefData.honorSymlinks, NULL, False}
+            &PrefData.honorSymlinks, NULL, False},
+    {"langModeScanSize", "LangModeScanSize", PREF_INT, "200",
+            &PrefData.langModeScanSize, NULL, False},
 };
 
 static XrmOptionDescRec OpTable[] = {
@@ -2183,6 +2186,11 @@ int GetPrefOverrideVirtKeyBindings(void)
     return PrefData.virtKeyOverride;
 }
 
+int GetPrefLangModeScanSize(void)
+{
+    return PrefData.langModeScanSize;
+}
+
 int GetPrefTruncSubstitution(void)
 {
     return PrefData.truncSubstitution;
@@ -2913,6 +2921,7 @@ void EditLanguageModes(void)
     XmString s1;
     int i, ac;
     Arg args[20];
+    char buff[300];
 
     /* if the dialog is already displayed, just pop it to the top and return */
     if (LMDialog.shell != NULL) {
@@ -2997,10 +3006,11 @@ the list on the left.  To add a new language, select \"New\" from the list."),
     RemapDeleteKey(LMDialog.extW);
     XtVaSetValues(extLbl, XmNuserData, LMDialog.extW, NULL);
     
+    sprintf(buff, "Recognition regular expression to apply to first %d\n\
+(customizable via X resources) characters of file to\ndetermine type from content", 
+	    GetPrefLangModeScanSize());
     recogLbl = XtVaCreateManagedWidget("recogLbl", xmLabelGadgetClass, form,
-    	    XmNlabelString, s1=MKSTRING(
-"Recognition regular expression (applied to first 200\n\
-characters of file to determine type from content)"),
+    	    XmNlabelString, s1=MKSTRING(buff),
     	    XmNalignment, XmALIGNMENT_BEGINNING,
     	    XmNmnemonic, 'R',
 	    XmNleftAttachment, XmATTACH_POSITION,
@@ -4515,26 +4525,26 @@ static void reapplyLanguageMode(WindowInfo *window, int mode, int forceDefaults)
 */
 static int matchLanguageMode(WindowInfo *window)
 {
-    char *ext, *first200;
+    char *ext, *filehead;
     int i, j, fileNameLen, extLen, beginPos, endPos, start;
     const char *versionExtendedPath;
 
     /*... look for an explicit mode statement first */
     
     /* Do a regular expression search on for recognition pattern */
-    first200 = BufGetRange(window->buffer, 0, 200);
+    filehead = BufGetRange(window->buffer, 0, GetPrefLangModeScanSize());
     for (i=0; i<NLanguageModes; i++) {
     	if (LanguageModes[i]->recognitionExpr != NULL) {
-    	    if (SearchString(first200, LanguageModes[i]->recognitionExpr,
+    	    if (SearchString(filehead, LanguageModes[i]->recognitionExpr,
     	    	    SEARCH_FORWARD, SEARCH_REGEX, False, 0, &beginPos,
     	    	    &endPos, NULL, NULL, NULL))
             {
-		NEditFree(first200);
+		NEditFree(filehead);
     	    	return i;
 	    }
     	}
     }
-    NEditFree(first200);
+    NEditFree(filehead);
     
     /* Look at file extension ("@@/" starts a ClearCase version extended path,
        which gets appended after the file extension, and therefore must be
