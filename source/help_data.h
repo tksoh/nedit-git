@@ -2,10 +2,10 @@
 *                                                                              *
 * help_data.h --  Nirvana Editor help module data                              *
 *                                                                              *
-                 Generated on Jan 14, 2017 (Do NOT edit!)
+                 Generated on Jun 20, 2020 (Do NOT edit!)
                  Source of content from file help.etx
 *                                                                              *
-* Copyright (c) 1999-2017 Mark Edel                                            *
+* Copyright (c) 1999-2020 Mark Edel                                            *
 *                                                                              *
 * This is free software; you can redistribute it and/or modify it under the    *
 * terms of the GNU General Public License as published by the Free Software    *
@@ -4249,6 +4249,11 @@ static char * htxt_resources [] = {
 "NEdit will try to detect these cases and just pop up the already opened ",
 "document. ",
 "\n\n",
+"\01A\01Bnedit.langModeScanSize\01A: 200\n",
+"\01I\n",
+"Number of characters to check when determining type (language mode) of the ",
+"file. ",
+"\n\n",
 "\01A\01Bnc.autoStart\01A: True \n",
 "\01I\n",
 "Whether the nc program should automatically start an NEdit server (without ",
@@ -5748,4 +5753,4 @@ Href H_R [] =
     {NULL,     14799, HELP_PREFERENCES,   "Autoload Files"}
 };
 
-static const char * NEditVersion = "NEdit 5.7\nJan 14, 2017\n";
+static const char * NEditVersion = "NEdit release of\nJun 20, 2020\n";

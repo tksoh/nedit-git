@@ -4439,6 +4439,11 @@ X Resources
   NEdit will try to detect these cases and just pop up the already opened
   document.
 
+**nedit.langModeScanSize**: 200
+
+  Number of characters to check when determining type (language mode) of the
+  file.
+
 **nc.autoStart**: True 
 
   Whether the nc program should automatically start an NEdit server (without
