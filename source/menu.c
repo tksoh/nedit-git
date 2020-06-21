@@ -521,7 +521,8 @@ static XtActionsRec Actions[] = {
     {"goto_matching", gotoMatchingAP},
     {"find-definition", findDefAP},
     {"find_definition", findDefAP},
-    {"pop_tagstack", popTagStackAP},
+    {"push_tag", findDefAP},
+    {"pop_tag", popTagStackAP},
     {"clear_tagstack", clearTagStackAP},
     {"show_tip", showTipAP},
     {"split-pane", splitPaneAP},
@@ -1518,7 +1519,7 @@ static void findDefinitionCB(Widget w, XtPointer clientData, XtPointer callData)
             ((XmAnyCallbackStruct *)callData)->event);
     XtCallActionProc(WidgetToWindow(MENU_WIDGET(w))->lastFocus,
     	    ((XmAnyCallbackStruct *)callData)->event->xbutton.state & ShiftMask
-    	    ? "pop_tagstack" : "find_definition",
+    	    ? "pop_tag" : "push_tag",
     	    ((XmAnyCallbackStruct *)callData)->event, NULL, 0);
 }
 
