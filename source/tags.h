@@ -42,7 +42,17 @@ typedef struct _tagFile {
     short refcount;     /* Only tips files are refcounted, not tags files */
 } tagFile;
 
+typedef struct _tagStackData {
+    WindowInfo *window;
+    Widget textPane;
+    int cursorPos;
+    selection sel;
+} tagStackData;
+
+#define TAG_STACK_DEPTH 20            /* size of tagstack */
+
 extern tagFile *TagsFileList;         /* list of loaded tags files */
+extern tagStackData TagStack[TAG_STACK_DEPTH]; /* stack of tag callers */
 extern tagFile *TipsFileList;         /* list of loaded calltips tag files */
 
 /* file_type and search_type arguments are to select between tips and tags,
@@ -60,6 +70,11 @@ int LookupTag(const char *name, const char **file, int *lang,
 
 /* Routines for handling tags or tips from the current selection */
 void FindDefinition(WindowInfo *window, Time time, const char *arg);
+void PopTagStack(WindowInfo *window, int count);
+void ClearTagStack(void);
+void RemoveTagStack(WindowInfo *window);
+void UpdateTagStack(WindowInfo *window, int pos, int nInserted,
+    	int nDeleted);
 void FindDefCalltip(WindowInfo *window, Time time, const char *arg);
 
 /* Display (possibly finding first) a calltip.  Search type can only be 

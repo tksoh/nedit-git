@@ -44,6 +44,7 @@
 #include "preferences.h"
 #include "selection.h"
 #include "server.h"
+#include "tags.h"
 #include "shell.h"
 #include "macro.h"
 #include "highlight.h"
@@ -978,6 +979,9 @@ void CloseWindow(WindowInfo *window)
        there can be more than one dialog. */
     RemoveFromMultiReplaceDialog(window);
     
+    /* remove tag stack entries for this window */
+    RemoveTagStack(window);
+
     /* Destroy the file closed property for this file */
     DeleteFileClosedProperty(window);
 
@@ -2327,6 +2331,7 @@ static void modifiedCB(int pos, int nInserted, int nDeleted, int nRestyled,
     if (!window->ignoreModify) {
         UpdateMarkTable(window, pos, nInserted, nDeleted);
     }
+    UpdateTagStack(window, pos, nInserted, nDeleted);
     
     /* Check and dim/undim selection related menu items */
     if ((window->wasSelected && !selected) ||

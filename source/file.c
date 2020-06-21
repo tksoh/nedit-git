@@ -325,6 +325,7 @@ void RevertToSaved(WindowInfo *window)
     forceShowLineNumbers(window);
     UpdateWindowTitle(window);
     UpdateWindowReadOnly(window);
+    RemoveTagStack(window);
     
     /* restore the insert and scroll positions of each pane */
     for (i=0; i<=window->nPanes; i++) {

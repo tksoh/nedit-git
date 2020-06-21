@@ -102,6 +102,12 @@ typedef struct _tag {
 
 enum searchDirection {FORWARD, BACKWARD};
 
+void maintainSelection(selection *sel, int pos, int nInserted,
+    	int nDeleted);
+void maintainPosition(int *position, int modPos, int nInserted,
+    	int nDeleted);
+static void pushTagStack(tagStackData tagData);
+static tagStackData getTagStackData(WindowInfo *window);
 static int loadTagsFile(const char *tagSpec, int index, int recLevel);
 static void findDefCB(Widget widget, XtPointer closure, Atom *sel,
         Atom *type, XtPointer value, unsigned long *length, int *format);
@@ -142,6 +148,8 @@ tagFile *TagsFileList = NULL;
 static tag **Tips = NULL;
 tagFile *TipsFileList = NULL;
 
+tagStackData TagStack[TAG_STACK_DEPTH];  /* stack of tag callers */
+int TagStackIndex;    /* stack pointer of tagstack */
 
 /* These are all transient global variables -- they don't hold any state
     between tag/tip lookups */
@@ -1445,7 +1453,11 @@ static void editTaggedLocation( Widget parent, int i )
     char filename[MAXPATHLEN], pathname[MAXPATHLEN];
     WindowInfo *windowToSearch;
     WindowInfo *parentWindow = WidgetToWindow(parent);
-    
+    tagStackData tagData;
+
+    /* save current selection for tagstack */
+    tagData = getTagStackData(WidgetToWindow(parent));
+
     ParseFilename(tagFiles[i],filename,pathname);
     /* open the file containing the definition */
     EditExistingFile(parentWindow, filename, pathname, 0, NULL, False, 
@@ -1462,6 +1474,7 @@ static void editTaggedLocation( Widget parent, int i )
     if(!*(tagSearch[i])) {
         /* if the search string is empty, select the numbered line */
         SelectNumberedLine(windowToSearch, startPos);
+        pushTagStack(tagData);
         return;
     }
 
@@ -1474,6 +1487,8 @@ static void editTaggedLocation( Widget parent, int i )
         return;
     }
 
+    pushTagStack(tagData);
+    
     /* select the matched string */
     BufSelect(windowToSearch->buffer, startPos, endPos);
     RaiseFocusDocumentWindow(windowToSearch, True);
@@ -1926,4 +1941,149 @@ static int loadTipsFile(const char *tipsFile, int index, int recLevel)
     fclose(fp);
     
     return nTipsAdded;
+}
+
+void ClearTagStack(void)
+{
+    TagStackIndex = 0;
+}
+
+/*
+** Remove tagstack entries belong to the window specified,
+** mainly because the window is about to be removed.
+*/
+void RemoveTagStack(WindowInfo *window)
+{
+    int i = 0;
+    
+    while(i<TagStackIndex) {
+        if (TagStack[i].window == window) {
+	    memcpy(&TagStack[i], &TagStack[i+1],
+	            sizeof(tagStackData)*(TagStackIndex-i-1));
+		    
+	    TagStackIndex--;
+	}
+	else
+	    i++;
+    }
+}
+
+/*
+** gather the cursor/selection info for tagstack's use
+*/
+static tagStackData getTagStackData(WindowInfo *window)
+{
+    tagStackData tagData;
+    
+    tagData.window = window;
+    tagData.textPane = window->lastFocus;
+    tagData.cursorPos = TextGetCursorPos(window->lastFocus);
+    memcpy(&tagData.sel, &window->buffer->primary,
+    	    sizeof(selection));
+    
+    return tagData;
+}
+
+/* 
+** push the last caller to find-definition on top of tagstack
+*/
+static void pushTagStack(tagStackData tagData)
+{
+    /* shift out oldest caller if tagstack is full */
+    if (TagStackIndex >= TAG_STACK_DEPTH) {
+        int i;
+	for (i=0; i<TagStackIndex; i++) {
+	    memcpy(&TagStack[i],&TagStack[i+1],sizeof(tagStackData));
+	}
+	TagStackIndex--;
+    }
+    
+    /* save tag caller info */
+    TagStack[TagStackIndex] = tagData;
+
+    /* move pointer to next available slot */
+    TagStackIndex++;
+}
+
+/*
+** Go to last window-line that made successfull call to find-definition 
+** (at the top of tag stack), and pop it from the tag stack.
+*/
+void PopTagStack(WindowInfo *window, int count)
+{
+    int i, cursorPos;
+    selection *sel;
+    WindowInfo *w, *tagwin;
+    Widget text, textPane;
+    
+    if (TagStackIndex <= 0) {
+	XBell(TheDisplay, 0);
+	return;
+    }
+    
+    TagStackIndex = TagStackIndex > count? TagStackIndex - count : 0;
+    
+    tagwin = TagStack[TagStackIndex].window;
+    cursorPos = TagStack[TagStackIndex].cursorPos;
+    sel = &TagStack[TagStackIndex].sel;
+
+    /* make sure caller window is still valid */
+    for (w=WindowList; w!=NULL; w=w->next) {
+    	if (w == tagwin) break;
+    }
+
+    if (w == NULL) {
+	XBell(TheDisplay, 0);
+	return;
+    }
+
+    /* if the split-pane has been remove, use the active pane */
+    textPane = tagwin->lastFocus;
+    for(i=0; i<=tagwin->nPanes; i++) {
+    	text = i==0 ? tagwin->textArea : tagwin->textPanes[i-1];
+    	if (text == TagStack[TagStackIndex].textPane) {
+	    textPane = text;
+	    break;
+	}
+    }
+
+    /* bring up the caller window & line */
+    RaiseDocumentWindow(tagwin);
+    if (sel->selected) {
+    	if (sel->rectangular)
+    	    BufRectSelect(tagwin->buffer, sel->start, sel->end,
+		    sel->rectStart, sel->rectEnd);
+    	else
+    	    BufSelect(tagwin->buffer, sel->start, sel->end);
+    } else
+    	BufUnselect(window->buffer);
+
+    /* see GotoMark() for the following code */
+    XtVaSetValues(textPane, textNautoShowInsertPos, False, NULL);
+    TextSetCursorPos(textPane, cursorPos);
+    MakeSelectionVisible(tagwin, textPane);
+    XtVaSetValues(textPane, textNautoShowInsertPos, True, NULL);
+
+    /* set keyboard focus to caller's pane */
+    tagwin->lastFocus = textPane;
+    XmProcessTraversal(tagwin->lastFocus, XmTRAVERSE_CURRENT);
+}
+
+/*
+** Keep the tagstack up to date across changes to the respective 
+** underlying buffer.
+*/
+void UpdateTagStack(WindowInfo *window, int pos, int nInserted,
+    	int nDeleted)
+{
+    int i;
+    
+    for (i=0; i<TagStackIndex; i++) {
+        if (TagStack[i].window == window) {
+    	    maintainSelection(&TagStack[i].sel, pos, nInserted,
+    	    	    nDeleted);
+    	    maintainPosition(&TagStack[i].cursorPos, pos, nInserted,
+    	    	    nDeleted);
+	}
+    }
 }

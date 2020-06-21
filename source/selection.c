@@ -80,9 +80,9 @@ static void gotoMarkKeyCB(Widget w, XtPointer clientData, XEvent *event,
     	Boolean *continueDispatch);
 static void gotoMarkExtendKeyCB(Widget w, XtPointer clientData, XEvent *event,
     	Boolean *continueDispatch);
-static void maintainSelection(selection *sel, int pos, int nInserted,
+void maintainSelection(selection *sel, int pos, int nInserted,
     	int nDeleted);
-static void maintainPosition(int *position, int modPos, int nInserted,
+void maintainPosition(int *position, int modPos, int nInserted,
     	int nDeleted);
 
 /*
@@ -662,7 +662,7 @@ void UpdateMarkTable(WindowInfo *window, int pos, int nInserted,
 ** Update a selection across buffer modifications specified by
 ** "pos", "nDeleted", and "nInserted".
 */
-static void maintainSelection(selection *sel, int pos, int nInserted,
+void maintainSelection(selection *sel, int pos, int nInserted,
 	int nDeleted)
 {
     if (!sel->selected || pos > sel->end)
@@ -677,7 +677,7 @@ static void maintainSelection(selection *sel, int pos, int nInserted,
 ** Update a position across buffer modifications specified by
 ** "modPos", "nDeleted", and "nInserted".
 */
-static void maintainPosition(int *position, int modPos, int nInserted,
+void maintainPosition(int *position, int modPos, int nInserted,
     	int nDeleted)
 {
     if (modPos > *position)

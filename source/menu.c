@@ -116,6 +116,7 @@ static void replaceSameCB(Widget w, XtPointer clientData, XtPointer callData);
 static void replaceFindSameCB(Widget w, XtPointer clientData, XtPointer callData);
 static void markCB(Widget w, XtPointer clientData, XtPointer callData);
 static void gotoMarkCB(Widget w, XtPointer clientData, XtPointer callData);
+static void findDefinitionCB(Widget w, XtPointer clientData, XtPointer callData);
 static void gotoMatchingCB(Widget w, XtPointer clientData, XtPointer callData);
 static void autoIndentOffCB(Widget w, WindowInfo *window, caddr_t callData);
 static void autoIndentCB(Widget w, WindowInfo *window, caddr_t callData);
@@ -302,6 +303,8 @@ static void selectToMatchingAP(Widget w, XEvent *event, String *args,
 static void gotoMatchingAP(Widget w, XEvent *event, String *args,
 	Cardinal *nArgs);
 static void findDefAP(Widget w, XEvent *event, String *args, Cardinal *nArgs); 
+static void popTagStackAP(Widget w, XEvent *event, String *args, Cardinal *nArgs); 
+static void clearTagStackAP(Widget w, XEvent *event, String *args, Cardinal *nArgs); 
 static void showTipAP(Widget w, XEvent *event, String *args, Cardinal *nArgs); 
 static void splitPaneAP(Widget w, XEvent *event, String *args,
 	Cardinal *nArgs);
@@ -518,6 +521,8 @@ static XtActionsRec Actions[] = {
     {"goto_matching", gotoMatchingAP},
     {"find-definition", findDefAP},
     {"find_definition", findDefAP},
+    {"pop_tagstack", popTagStackAP},
+    {"clear_tagstack", clearTagStackAP},
     {"show_tip", showTipAP},
     {"split-pane", splitPaneAP},
     {"split_pane", splitPaneAP},
@@ -805,9 +810,11 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     createMenuItem(menuPane, "gotoMatching", "Goto Matching (..)", 'M',
     	    gotoMatchingCB, window, FULL);
     createFakeMenuItem(menuPane, "gotoMatchingShift", gotoMatchingCB, window);
+    createMenuSeparator(menuPane, "sep1", FULL);
     window->findDefItem = createMenuItem(menuPane, "findDefinition",
-    	    "Find Definition", 'D', doActionCB, "find_definition", FULL);
+    	    "Find Definition", 'D', findDefinitionCB, window, FULL);
     XtSetSensitive(window->findDefItem, TagsFileList != NULL);
+    createFakeMenuItem(menuPane, "findDefinitionShift", findDefinitionCB, window);
     window->showTipItem = createMenuItem(menuPane, "showCalltip",
     	    "Show Calltip", 'C', doActionCB, "show_tip", FULL);
     XtSetSensitive(window->showTipItem, (TagsFileList != NULL || 
@@ -1503,6 +1510,16 @@ static void gotoMarkCB(Widget w, XtPointer clientData, XtPointer callData)
     else
     	XtCallActionProc(window->lastFocus, "goto_mark_dialog", event, params,
 		extend ? 1 : 0);
+}
+
+static void findDefinitionCB(Widget w, XtPointer clientData, XtPointer callData)
+{
+    HidePointerOnKeyedEvent(WidgetToWindow(MENU_WIDGET(w))->lastFocus,
+            ((XmAnyCallbackStruct *)callData)->event);
+    XtCallActionProc(WidgetToWindow(MENU_WIDGET(w))->lastFocus,
+    	    ((XmAnyCallbackStruct *)callData)->event->xbutton.state & ShiftMask
+    	    ? "pop_tagstack" : "find_definition",
+    	    ((XmAnyCallbackStruct *)callData)->event, NULL, 0);
 }
 
 static void gotoMatchingCB(Widget w, XtPointer clientData, XtPointer callData)
@@ -3467,6 +3484,26 @@ static void findDefAP(Widget w, XEvent *event, String *args, Cardinal *nArgs)
 {
     FindDefinition(WidgetToWindow(w), event->xbutton.time,
 	    *nArgs == 0 ? NULL : args[0]);
+}
+
+static void popTagStackAP(Widget w, XEvent *event, String *args, Cardinal *nArgs) 
+{
+    int count = 1;
+    
+    if (*nArgs) {
+        if (sscanf(args[0], "%d", &count) != 1 || count < 1) {
+            fprintf(stderr,
+                "NEdit: pop_tagstack requires integer argument > 0\n");
+	    return;
+	}
+    }
+    	
+    PopTagStack(WidgetToWindow(w), 1);
+}
+
+static void clearTagStackAP(Widget w, XEvent *event, String *args, Cardinal *nArgs) 
+{
+    ClearTagStack();
 }
 
 static void showTipAP(Widget w, XEvent *event, String *args, Cardinal *nArgs) 
