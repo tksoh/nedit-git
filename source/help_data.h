@@ -2,10 +2,10 @@
 *                                                                              *
 * help_data.h --  Nirvana Editor help module data                              *
 *                                                                              *
-                 Generated on Jan 14, 2017 (Do NOT edit!)
+                 Generated on Jun 22, 2020 (Do NOT edit!)
                  Source of content from file help.etx
 *                                                                              *
-* Copyright (c) 1999-2017 Mark Edel                                            *
+* Copyright (c) 1999-2020 Mark Edel                                            *
 *                                                                              *
 * This is free software; you can redistribute it and/or modify it under the    *
 * terms of the GNU General Public License as published by the Free Software    *
@@ -3930,6 +3930,11 @@ static char * htxt_resources [] = {
 "will be loaded at this time. When this resource value is False, relative path ",
 "tag specifications will only be evaluated at NEdit startup time. ",
 "\n\n",
+"\01A\01Bnedit.showPrevOpenAsTree: True\01A\n",
+"\01I\n",
+"Setting this resource to True will display the Open Previous submenu in the ",
+"tree-like view commonly seen on the file manager applications. ",
+"\n\n",
 "\01A\01Bnedit.wordDelimiters\01A: .,/\\\\`'!@#%^&*()-=+{}[]\":;<>?\n",
 "\01I\n",
 "The set of characters which mark the boundaries between words. In addition ",
@@ -5748,4 +5753,4 @@ Href H_R [] =
     {NULL,     14799, HELP_PREFERENCES,   "Autoload Files"}
 };
 
-static const char * NEditVersion = "NEdit 5.7\nJan 14, 2017\n";
+static const char * NEditVersion = "NEdit release of\nJun 22, 2020\n";

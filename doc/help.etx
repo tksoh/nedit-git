@@ -4116,6 +4116,11 @@ X Resources
   will be loaded at this time. When this resource value is False, relative path
   tag specifications will only be evaluated at NEdit startup time.
 
+**nedit.showPrevOpenAsTree: True**
+
+  Setting this resource to True will display the Open Previous submenu in the 
+  tree-like view commonly seen on the file manager applications.
+
 **nedit.wordDelimiters**: .,/\\`'!@@#%^&*()-=+{}[]":;<>?
 
   The set of characters which mark the boundaries between words. In addition
