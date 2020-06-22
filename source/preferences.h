@@ -53,6 +53,7 @@ void RestoreNEditPrefs(XrmDatabase prefDB, XrmDatabase appDB);
 void SaveNEditPrefs(Widget parent, int quietly);
 void ImportPrefFile(const char *filename, int convertOld);
 void MarkPrefsChanged(void);
+int CheckPrefsChanged(void);
 int CheckPrefsChangesSaved(Widget dialogParent);
 void SetPrefWrap(WrapStyle state);
 WrapStyle GetPrefWrap(int langMode);

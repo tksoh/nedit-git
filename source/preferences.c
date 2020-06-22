@@ -1253,6 +1253,8 @@ static const char* getDefaultShell(void);
 static int shortPrefToDefault(Widget parent, const char *settingName, int *setDefault);
 #endif
 
+void RefreshPrefDialogStates(void);
+
 XrmDatabase CreateNEditPrefDB(int *argcInOut, char **argvInOut)
 {
     return CreatePreferencesDatabase(GetRCFileName(NEDIT_RC), APP_NAME,
@@ -2194,6 +2196,12 @@ int GetPrefTruncSubstitution(void)
 void MarkPrefsChanged(void)
 {
     PrefsHaveChanged = True;
+    RefreshPrefDialogStates();
+}
+
+int CheckPrefsChanged(void)
+{
+    return PrefsHaveChanged;
 }
 
 /*
@@ -2269,7 +2277,7 @@ static void setStringAllocPref(char **pprefDataField, char *newValue)
     if (newValue) {
       p_newField = NEditStrdup(newValue);
     }
-    *pprefDataField = newValue;
+    *pprefDataField = p_newField;
 }
 
 /*
@@ -4403,6 +4411,8 @@ static void updateFonts(fontDialog *fd)
     NEditFree(italicName);
     NEditFree(boldName);
     NEditFree(boldItalicName);
+
+    RefreshPrefDialogStates();
 }
 
 /*

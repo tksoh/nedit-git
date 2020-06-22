@@ -381,6 +381,19 @@ Ctrl<Key>G:help-button-action(\"findAgain\")\\n\
     process-bdrag() help-hyperlink()\\n\
 ~Meta~Ctrl~Shift<Btn2Up>:\
     help-hyperlink(\"new\", \"process-cancel\", \"copy-to\")",
+    "*prefDialog*traversalOn: False",
+    "*prefDialog*buttons*indicatorOn: off",
+    "*prefDialog*buttons*shadowThickness: 1",
+    "*prefDialog*buttons*highlightThickness: 1",
+    "*prefDialog*buttons*spacing: 1",
+    "*prefDialog*panel*XmRowColumn.marginHeight: 0",
+    "*prefDialog*packing: XmPACK_TIGHT",
+    "*prefDialog*custRow.text.columns: 3",
+    "*prefDialog*custCol.text.columns: 3",
+    "*prefDialog*wrapText.text.columns: 5",
+    "*prefDialog*tabDist.text.columns: 5",
+    "*prefDialog*emTabDist.text.columns: 5",
+    "*prefDialog*backlightCharType.text.columns: 30",
     NULL
 };
 

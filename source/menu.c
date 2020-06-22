@@ -203,6 +203,7 @@ static void size60x80CB(Widget w, WindowInfo *window, caddr_t callData);
 static void size80x80CB(Widget w, WindowInfo *window, caddr_t callData);
 static void sizeCustomCB(Widget w, WindowInfo *window, caddr_t callData);
 static void savePrefCB(Widget w, WindowInfo *window, caddr_t callData);
+static void prefDialogCB(Widget w, WindowInfo *window, caddr_t callData);
 static void formFeedCB(Widget w, XtPointer clientData, XtPointer callData);
 static void cancelShellCB(Widget w, WindowInfo *window, XtPointer callData);
 static void learnCB(Widget w, WindowInfo *window, caddr_t callData);
@@ -818,253 +819,12 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     */
     menuPane = createMenu(menuBar, "preferencesMenu", "Preferences", 0, NULL,
     	    SHORT);
-    subPane = createMenu(menuPane, "defaultSettings", "Default Settings", 'D',
-    	    NULL, FULL);
-    createMenuItem(subPane, "languageModes", "Language Modes...", 'L',
-    	    languageDefCB, window, FULL);
-    
-    /* Auto Indent sub menu */
-    subSubPane = createMenu(subPane, "autoIndent", "Auto Indent", 'A',
-    	    NULL, FULL);
-    window->autoIndentOffDefItem = createMenuRadioToggle(subSubPane, "off",
-    	    "Off", 'O', autoIndentOffDefCB, window,
-    	    GetPrefAutoIndent(PLAIN_LANGUAGE_MODE) == NO_AUTO_INDENT, SHORT);
-    window->autoIndentDefItem = createMenuRadioToggle(subSubPane, "on",
-    	    "On", 'n', autoIndentDefCB, window,
-    	    GetPrefAutoIndent(PLAIN_LANGUAGE_MODE) == AUTO_INDENT, SHORT);
-    window->smartIndentDefItem = createMenuRadioToggle(subSubPane, "smart",
-    	    "Smart", 'S', smartIndentDefCB, window,
-    	    GetPrefAutoIndent(PLAIN_LANGUAGE_MODE) == SMART_INDENT, SHORT);
-    createMenuSeparator(subSubPane, "sep1", SHORT);
-    createMenuItem(subSubPane, "ProgramSmartIndent", "Program Smart Indent...",
-    	    'P', smartMacrosDefCB, window, FULL);
-    
-    /* Wrap sub menu */
-    subSubPane = createMenu(subPane, "wrap", "Wrap", 'W', NULL, FULL);
-    window->noWrapDefItem = createMenuRadioToggle(subSubPane,
-    	    "none", "None", 'N', noWrapDefCB,
-	    window, GetPrefWrap(PLAIN_LANGUAGE_MODE) == NO_WRAP, SHORT);
-    window->newlineWrapDefItem = createMenuRadioToggle(subSubPane,
-    	    "autoNewline", "Auto Newline", 'A', newlineWrapDefCB,
-	    window, GetPrefWrap(PLAIN_LANGUAGE_MODE) == NEWLINE_WRAP, SHORT);
-    window->contWrapDefItem = createMenuRadioToggle(subSubPane, "continuous",
-    	    "Continuous", 'C', contWrapDefCB, window,
-    	    GetPrefWrap(PLAIN_LANGUAGE_MODE) == CONTINUOUS_WRAP, SHORT);
-    createMenuSeparator(subSubPane, "sep1", SHORT);
-    createMenuItem(subSubPane, "wrapMargin", "Wrap Margin...", 'W',
-    	    wrapMarginDefCB, window, SHORT);
-    
-    /* Smart Tags sub menu */
-    subSubPane = createMenu(subPane, "smartTags", "Tag Collisions", 'l',
-	    NULL, FULL);
-    window->allTagsDefItem = createMenuRadioToggle(subSubPane, "showall",
-	    "Show All", 'A', showAllTagsDefCB, window, !GetPrefSmartTags(),
-	    FULL);
-    window->smartTagsDefItem = createMenuRadioToggle(subSubPane, "smart",
-	    "Smart", 'S', smartTagsDefCB, window, GetPrefSmartTags(), FULL);
+    createMenuItem(menuPane, "prefDialog", "Default Settings...", 0,
+    	    prefDialogCB, window, FULL);
 
-    createMenuItem(subPane, "shellSel", "Command Shell...", 's', shellSelDefCB,
-            window, SHORT);
-    createMenuItem(subPane, "tabDistance", "Tab Stops...", 'T', tabsDefCB, window,
-    	    SHORT);
-    createMenuItem(subPane, "textFont", "Text Fonts...", 'F', fontDefCB, window,
-    	    FULL);
-    createMenuItem(subPane, "colors", "Colors...", 'C', colorDefCB, window,
-    	    FULL);
-    
-    /* Customize Menus sub menu */
-    subSubPane = createMenu(subPane, "customizeMenus", "Customize Menus",
-    	    'u', NULL, FULL);
-#ifndef VMS
-    createMenuItem(subSubPane, "shellMenu", "Shell Menu...", 'S',
-    	    shellDefCB, window, FULL);
-#endif
-    createMenuItem(subSubPane, "macroMenu", "Macro Menu...", 'M',
-    	    macroDefCB, window, FULL);
-    createMenuItem(subSubPane, "windowBackgroundMenu",
-	    "Window Background Menu...", 'W', bgMenuDefCB, window, FULL);
-    createMenuSeparator(subSubPane, "sep1", SHORT);
-    window->sortOpenPrevDefItem = createMenuToggle(subSubPane, "sortOpenPrevMenu",
-            "Sort Open Prev. Menu", 'o', sortOpenPrevDefCB, window,
-            GetPrefSortOpenPrevMenu(), FULL);
-    window->pathInWindowsMenuDefItem = createMenuToggle(subSubPane, "pathInWindowsMenu",
-    	    "Show Path In Windows Menu", 'P', pathInWindowsMenuDefCB, window, GetPrefShowPathInWindowsMenu(),
-    	    SHORT);
-
-    createMenuItem(subPane, "custimizeTitle", "Customize Window Title...", 'd',
-    	    customizeTitleDefCB, window, FULL);
-
-    /* Search sub menu */
-    subSubPane = createMenu(subPane, "searching", "Searching",
-    	    'g', NULL, FULL);
-    window->searchDlogsDefItem = createMenuToggle(subSubPane, "verbose",
-    	    "Verbose", 'V', searchDlogsDefCB, window,
-    	    GetPrefSearchDlogs(), SHORT);
-    window->searchWrapsDefItem = createMenuToggle(subSubPane, "wrapAround",
-    	    "Wrap Around", 'W', searchWrapsDefCB, window,
-    	    GetPrefSearchWraps(), SHORT);
-    window->beepOnSearchWrapDefItem = createMenuToggle(subSubPane,
-	  "beepOnSearchWrap", "Beep On Search Wrap", 'B',
-	  beepOnSearchWrapDefCB, window, GetPrefBeepOnSearchWrap(), SHORT);
-    window->keepSearchDlogsDefItem = createMenuToggle(subSubPane,
-    	    "keepDialogsUp", "Keep Dialogs Up", 'K',
-    	    keepSearchDlogsDefCB, window, GetPrefKeepSearchDlogs(), SHORT);
-    subSubSubPane = createMenu(subSubPane, "defaultSearchStyle",
-    	    "Default Search Style", 'D', NULL, FULL);
-    XtVaSetValues(subSubSubPane, XmNradioBehavior, True, NULL); 
-    window->searchLiteralDefItem = createMenuToggle(subSubSubPane, "literal",
-    	    "Literal", 'L', searchLiteralCB, window,
-    	    GetPrefSearch() == SEARCH_LITERAL, FULL);
-    window->searchCaseSenseDefItem = createMenuToggle(subSubSubPane,
-    	    "caseSensitive", "Literal, Case Sensitive", 'C', searchCaseSenseCB, window,
-    	    GetPrefSearch() == SEARCH_CASE_SENSE, FULL);
-    window->searchLiteralWordDefItem = createMenuToggle(subSubSubPane, "literalWord",
-    	    "Literal, Whole Word", 'W', searchLiteralWordCB, window,
-    	    GetPrefSearch() == SEARCH_LITERAL_WORD, FULL);
-    window->searchCaseSenseWordDefItem = createMenuToggle(subSubSubPane,
-    	    "caseSensitiveWord", "Literal, Case Sensitive, Whole Word", 't', searchCaseSenseWordCB, window,
-    	    GetPrefSearch() == SEARCH_CASE_SENSE_WORD, FULL);
-    window->searchRegexDefItem = createMenuToggle(subSubSubPane,
-    	    "regularExpression", "Regular Expression", 'R', searchRegexCB,
-    	    window, GetPrefSearch() == SEARCH_REGEX, FULL);
-    window->searchRegexNoCaseDefItem = createMenuToggle(subSubSubPane,
-    	    "regularExpressionNoCase", "Regular Expression, Case Insensitive", 'I', searchRegexNoCaseCB, window,
-    	    GetPrefSearch() == SEARCH_REGEX_NOCASE, FULL);
-#ifdef REPLACE_SCOPE
-    subSubSubPane = createMenu(subSubPane, "defaultReplaceScope",
-    	    "Default Replace Scope", 'R', NULL, FULL);
-    XtVaSetValues(subSubSubPane, XmNradioBehavior, True, NULL); 
-    window->replScopeWinDefItem = createMenuToggle(subSubSubPane, "window",
-    	    "In Window", 'W', replaceScopeWindowCB, window,
-    	    GetPrefReplaceDefScope() == REPL_DEF_SCOPE_WINDOW, FULL);
-    window->replScopeSelDefItem = createMenuToggle(subSubSubPane, "selection",
-    	    "In Selection", 'S', replaceScopeSelectionCB, window,
-    	    GetPrefReplaceDefScope() == REPL_DEF_SCOPE_SELECTION, FULL);
-    window->replScopeSmartDefItem = createMenuToggle(subSubSubPane, "window",
-    	    "Smart", 'm', replaceScopeSmartCB, window,
-    	    GetPrefReplaceDefScope() == REPL_DEF_SCOPE_SMART, FULL);
-#endif
-
-    /* Syntax Highlighting sub menu */
-    subSubPane = createMenu(subPane, "syntaxHighlighting","Syntax Highlighting",
-    	    'H', NULL, FULL);
-    window->highlightOffDefItem = createMenuRadioToggle(subSubPane, "off","Off",
-    	    'O', highlightOffDefCB, window, !GetPrefHighlightSyntax(), FULL);
-    window->highlightDefItem = createMenuRadioToggle(subSubPane, "on",
-    	    "On", 'n', highlightDefCB, window, GetPrefHighlightSyntax(), FULL);
-    createMenuSeparator(subSubPane, "sep1", SHORT);
-    createMenuItem(subSubPane, "recognitionPatterns", "Recognition Patterns...",
-    	    'R', highlightingDefCB, window, FULL);
-    createMenuItem(subSubPane, "textDrawingStyles", "Text Drawing Styles...", 'T',
-    	    stylesDefCB, window, FULL);
-    window->backlightCharsDefItem = createMenuToggle(subPane,
-          "backlightChars", "Apply Backlighting", 'g', backlightCharsDefCB,
-          window, GetPrefBacklightChars(), FULL);
-
-    /* tabbed editing sub menu */
-    subSubPane = createMenu(subPane, "tabbedEditMenu", "Tabbed Editing", 0,
-    	    &cascade, SHORT);
-    window->openInTabDefItem = createMenuToggle(subSubPane, "openAsTab",
-    	    "Open File In New Tab", 'T', openInTabDefCB, window,
-	    GetPrefOpenInTab(), FULL);
-    window->tabBarDefItem = createMenuToggle(subSubPane, "showTabBar",
-    	    "Show Tab Bar", 'B', tabBarDefCB, window,
-	    GetPrefTabBar(), FULL);
-    window->tabBarHideDefItem = createMenuToggle(subSubPane,
-    	    "hideTabBar", "Hide Tab Bar When Only One Document is Open", 'H', 
-	    tabBarHideDefCB, window, GetPrefTabBarHideOne(), FULL);
-    window->tabNavigateDefItem = createMenuToggle(subSubPane, "tabNavigateDef",
-    	    "Next/Prev Tabs Across Windows", 'W', tabNavigateDefCB, window,
-	    GetPrefGlobalTabNavigate(), FULL);
-    window->tabSortDefItem = createMenuToggle(subSubPane, "tabSortDef",
-    	    "Sort Tabs Alphabetically", 'S', tabSortDefCB, window,
-	    GetPrefSortTabs(), FULL);
-    
-    window->toolTipsDefItem = createMenuToggle(subPane, "showTooltips",
-    	    "Show Tooltips", 0, toolTipsDefCB, window, GetPrefToolTips(),
-	    FULL);
-    window->statsLineDefItem = createMenuToggle(subPane, "statisticsLine",
-    	    "Statistics Line", 'S', statsLineDefCB, window, GetPrefStatsLine(),
-    	    SHORT);
-    window->iSearchLineDefItem = createMenuToggle(subPane,
-	    "incrementalSearchLine", "Incremental Search Line", 'i',
-	    iSearchLineDefCB, window, GetPrefISearchLine(), FULL);
-    window->lineNumsDefItem = createMenuToggle(subPane, "showLineNumbers",
-    	    "Show Line Numbers", 'N', lineNumsDefCB, window, GetPrefLineNums(),
-    	    SHORT);
-    window->saveLastDefItem = createMenuToggle(subPane, "preserveLastVersion",
-    	    "Make Backup Copy (*.bck)", 'e', preserveDefCB, window,
-    	    GetPrefSaveOldVersion(), SHORT);
-    window->autoSaveDefItem = createMenuToggle(subPane, "incrementalBackup",
-    	    "Incremental Backup", 'B', autoSaveDefCB, window, GetPrefAutoSave(),
-    	    SHORT);
-
-    
-    /* Show Matching sub menu */
-    subSubPane = createMenu(subPane, "showMatching", "Show Matching (..)", 'M',
-	    NULL, FULL);
-    window->showMatchingOffDefItem = createMenuRadioToggle(subSubPane, "off",
-	    "Off", 'O', showMatchingOffDefCB, window, 
-            GetPrefShowMatching() == NO_FLASH, SHORT);
-    window->showMatchingDelimitDefItem = createMenuRadioToggle(subSubPane,
-	    "delimiter", "Delimiter", 'D', showMatchingDelimitDefCB, window,
-	    GetPrefShowMatching() == FLASH_DELIMIT, SHORT);
-    window->showMatchingRangeDefItem = createMenuRadioToggle(subSubPane,
-	    "range", "Range", 'R', showMatchingRangeDefCB, window,
-	    GetPrefShowMatching() == FLASH_RANGE, SHORT);
-    createMenuSeparator(subSubPane, "sep", SHORT);
-    window->matchSyntaxBasedDefItem = createMenuToggle(subSubPane, 
-	   "matchSyntax", "Syntax Based", 'S', matchSyntaxBasedDefCB, window,
-	    GetPrefMatchSyntaxBased(), SHORT);
-
-    /* Append LF at end of files on save */
-    window->appendLFItem = createMenuToggle(subPane, "appendLFItem",
-            "Terminate with Line Break on Save", 'v', appendLFCB, NULL,
-            GetPrefAppendLF(), FULL);
-
-    window->reposDlogsDefItem = createMenuToggle(subPane, "popupsUnderPointer",
-    	    "Popups Under Pointer", 'P', reposDlogsDefCB, window,
-    	    GetPrefRepositionDialogs(), FULL);
-    window->autoScrollDefItem = createMenuToggle(subPane, "autoScroll",
-    	    "Auto Scroll Near Window Top/Bottom", 0, autoScrollDefCB, window,
-    	    GetPrefAutoScroll(), FULL);
-    subSubPane = createMenu(subPane, "warnings", "Warnings", 'r', NULL, FULL);
-    window->modWarnDefItem = createMenuToggle(subSubPane,
-	    "filesModifiedExternally", "Files Modified Externally", 'F',
-	    modWarnDefCB, window, GetPrefWarnFileMods(), FULL);
-    window->modWarnRealDefItem = createMenuToggle(subSubPane,
-	    "checkModifiedFileContents", "Check Modified File Contents", 'C',
-	    modWarnRealDefCB, window, GetPrefWarnRealFileMods(), FULL);
-    XtSetSensitive(window->modWarnRealDefItem, GetPrefWarnFileMods());
-    window->exitWarnDefItem = createMenuToggle(subSubPane, "onExit", "On Exit", 'O',
-	    exitWarnDefCB, window, GetPrefWarnExit(), FULL);
-    
-    /* Initial Window Size sub menu (simulates radioBehavior) */
-    subSubPane = createMenu(subPane, "initialwindowSize",
-    	    "Initial Window Size", 'z', NULL, FULL);
-    /* XtVaSetValues(subSubPane, XmNradioBehavior, True, NULL);  */
-    window->size24x80DefItem = btn = createMenuToggle(subSubPane, "24X80",
-    	    "24 x 80", '2', size24x80CB, window, False, SHORT);
-    XtVaSetValues(btn, XmNindicatorType, XmONE_OF_MANY, NULL);
-    window->size40x80DefItem = btn = createMenuToggle(subSubPane, "40X80",
-    	    "40 x 80", '4', size40x80CB, window, False, SHORT);
-    XtVaSetValues(btn, XmNindicatorType, XmONE_OF_MANY, NULL);
-    window->size60x80DefItem = btn = createMenuToggle(subSubPane, "60X80",
-    	    "60 x 80", '6', size60x80CB, window, False, SHORT);
-    XtVaSetValues(btn, XmNindicatorType, XmONE_OF_MANY, NULL);
-    window->size80x80DefItem = btn = createMenuToggle(subSubPane, "80X80",
-    	    "80 x 80", '8', size80x80CB, window, False, SHORT);
-    XtVaSetValues(btn, XmNindicatorType, XmONE_OF_MANY, NULL);
-    window->sizeCustomDefItem = btn = createMenuToggle(subSubPane, "custom",
-    	    "Custom...", 'C', sizeCustomCB, window, False, SHORT);
-    XtVaSetValues(btn, XmNindicatorType, XmONE_OF_MANY, NULL);
-    updateWindowSizeMenu(window);
-    
     /*
     ** Remainder of Preferences menu
     */
-    createMenuItem(menuPane, "saveDefaults", "Save Defaults...", 'v',
-    	    savePrefCB, window, FULL);
 #ifdef SGI_CUSTOM
     window->shortMenusDefItem = createMenuToggle(menuPane,
     	    "shortMenus", "Short Menus", 'h', shortMenusCB, window,
@@ -2626,6 +2386,14 @@ static void sizeCustomCB(Widget w, WindowInfo *window, caddr_t callData)
             ((XmAnyCallbackStruct *)callData)->event);
     RowColumnPrefDialog(WidgetToWindow(MENU_WIDGET(w))->shell);
     updateWindowSizeMenus();
+}
+
+static void prefDialogCB(Widget w, WindowInfo *window, caddr_t callData)
+{
+    void show_preferences(Widget parent);
+    HidePointerOnKeyedEvent(WidgetToWindow(MENU_WIDGET(w))->lastFocus,
+            ((XmAnyCallbackStruct *)callData)->event);
+    show_preferences(MENU_WIDGET(w));
 }
 
 static void savePrefCB(Widget w, WindowInfo *window, caddr_t callData)

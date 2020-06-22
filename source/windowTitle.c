@@ -616,12 +616,14 @@ static void serverEqualViewCB(Widget w, XtPointer clientData, XtPointer callData
 static void applyCB(Widget w, XtPointer clientData, XtPointer callData)
 {
     char *format = XmTextGetString(etDialog.formatW);
+    void RefreshPrefDialogStates(void);
 
     /* pop down the dialog */
 /*    XtUnmanageChild(etDialog.form); */
    
     if (strcmp(format, GetPrefTitleFormat()) != 0) {
         SetPrefTitleFormat(format);
+        RefreshPrefDialogStates();
     }
     NEditFree(format);
 }
