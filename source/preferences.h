@@ -125,6 +125,8 @@ void SetPrefAppendLF(int state);
 int GetPrefAppendLF(void);
 void SetPrefSortOpenPrevMenu(int state);
 int GetPrefSortOpenPrevMenu(void);
+void SetPrefShowPrevOpenAsTree(int state);
+int GetPrefShowPrevOpenAsTree(void);
 char *GetPrefTagFile(void);
 int GetPrefSmartTags(void);
 void SetPrefSmartTags(int state);

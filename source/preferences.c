@@ -296,6 +296,7 @@ static struct prefData {
     int autoScroll;             /* w. to autoscroll near top/bottom of screen */
     int autoScrollVPadding;     /* how close to get before autoscrolling */
     int sortOpenPrevMenu;   	/* whether to sort the "Open Previous" menu */
+    int showPrevOpenAsTree;	/* show "Open Previous" menu in tree format */
     int appendLF;       /* Whether to append LF at the end of each file */
     int mapDelete;		/* whether to map delete to backspace */
     int stdOpenDialog;		/* w. to retain redundant text field in Open */
@@ -893,6 +894,8 @@ static PrefDescripRec PrefDescrip[] = {
         &PrefData.appendLF, NULL, True},
     {"sortOpenPrevMenu", "SortOpenPrevMenu", PREF_BOOLEAN, "True",
     	&PrefData.sortOpenPrevMenu, NULL, True},
+    {"showPrevOpenAsTree", "ShowPrevOpenAsTree", PREF_BOOLEAN, "True",
+    	&PrefData.showPrevOpenAsTree, NULL, False},
     {"statisticsLine", "StatisticsLine", PREF_BOOLEAN, "False",
     	&PrefData.statsLine, NULL, True},
     {"iSearchLine", "ISearchLine", PREF_BOOLEAN, "False",
@@ -1970,6 +1973,16 @@ void SetPrefSortOpenPrevMenu(int state)
 int GetPrefSortOpenPrevMenu(void)
 {
     return PrefData.sortOpenPrevMenu;
+}
+
+void SetPrefShowPrevOpenAsTree(int state)
+{
+    setIntPref(&PrefData.showPrevOpenAsTree, state);
+}
+
+int GetPrefShowPrevOpenAsTree(void)
+{
+    return PrefData.showPrevOpenAsTree;
 }
 
 char *GetPrefTagFile(void)

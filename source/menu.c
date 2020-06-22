@@ -670,6 +670,7 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     if (GetPrefMaxPrevOpenFiles() > 0) {
 	window->prevOpenMenuPane = createMenu(menuPane, "openPrevious",
     		"Open Previous", 'v', &window->prevOpenMenuItem, SHORT);
+	XtVaSetValues(window->prevOpenMenuPane, XmNadjustMargin, False, NULL);    
 	XtSetSensitive(window->prevOpenMenuItem, NPrevOpen != 0);
 	XtAddCallback(window->prevOpenMenuItem, XmNcascadingCallback,
     		(XtCallbackProc)prevOpenMenuCB, window);
@@ -4517,6 +4518,8 @@ void AddToPrevOpenMenu(const char *filename)
         it before Session A gets a chance to write.  */
     ReadNEditDB();
 
+    ReadNEditDB();
+
     /* If the name is already in the list, move it to the start */
     for (i=0; i<NPrevOpen; i++) {
     	if (!strcmp(filename, PrevOpen[i])) {
@@ -4671,18 +4674,29 @@ static void updateWindowMenu(const WindowInfo *window)
 ** Update the Previously Opened Files menu of a single window to reflect the
 ** current state of the list as retrieved from FIXME.
 ** Thanks to Markus Schwarzenberg for the sorting part.
+**
+** Optionally, display the prev-open list in directory-tree format.
 */
 static void updatePrevOpenMenu(WindowInfo *window)
 {
+    char filename[MAXPATHLEN], menuFilename[MAXPATHLEN]; 
+    char pathname[MAXPATHLEN], prevPathname[MAXPATHLEN];
+    char buf[MAXPATHLEN];
+    int matchPos;
+    Dimension indentMargin;
+    XmFontList fontlist;
     Widget btn;
     WidgetList items;
     Cardinal nItems;
-    int n, index;
+    int index;
     XmString st1;
     char **prevOpenSorted;
 
     /*  Read history file to get entries written by other sessions.  */
     ReadNEditDB();
+    
+    /* Get font info for menus */
+    XtVaGetValues(window->prevOpenMenuItem, XmNfontList, &fontlist, NULL);
                 
     /* Sort the previously opened file list if requested */
     prevOpenSorted = (char **)NEditMalloc(NPrevOpen * sizeof(char*));
@@ -4697,33 +4711,77 @@ static void updatePrevOpenMenu(WindowInfo *window)
        stick with this weird method of re-naming the items */
     XtVaGetValues(window->prevOpenMenuPane, XmNchildren, &items,
             XmNnumChildren, &nItems, NULL);
-    index = 0;
-    for (n=0; n<(int)nItems; n++) {
-        if (index >= NPrevOpen) {
-            /* unmanaging before destroying stops parent from displaying */
-            XtUnmanageChild(items[n]);
-            XtDestroyWidget(items[n]);          
-        } else {
-            XtVaSetValues(items[n], XmNlabelString,
-                    st1=XmStringCreateSimple(prevOpenSorted[index]), NULL);
-            XtRemoveAllCallbacks(items[n], XmNactivateCallback);
-            XtAddCallback(items[n], XmNactivateCallback,
+    
+    /* in the begining ... */
+    prevPathname[0] = '\0';
+    
+    for (index=0; index<NPrevOpen; index++) {
+    	indentMargin = 0; 
+	if (GetPrefShowPrevOpenAsTree() &&
+	        !ParseFilename(prevOpenSorted[index], filename, pathname)) {
+    	    /* search for common sub-dir in prev and current paths */
+	    for (matchPos=strlen(pathname); matchPos>1; matchPos--)
+		if (pathname[matchPos] == '/' &&
+		        !strncmp(pathname, prevPathname, matchPos+1))
+		    break;
+
+    	    if (matchPos > 1) {
+		/* file is in sub-directory or same directory as
+		   previous file */
+		strcpy(buf,prevOpenSorted[index]);
+		buf[matchPos] = '\0';
+
+		/* calculate margin to be indented */
+		st1=XmStringCreateSimple(buf);
+    	    	indentMargin = XmStringWidth(fontlist, st1);
+    	        XmStringFree(st1);
+
+    	    	/* create filepath without parent's dirname */
+		sprintf(menuFilename, "%s",
+		        &prevOpenSorted[index][matchPos]);
+    		st1=XmStringCreateSimple(menuFilename);
+	    }
+	    else {
+		/* file is in a totally different path */
+		st1=XmStringCreateSimple(prevOpenSorted[index]);
+	    }
+
+	    strcpy(prevPathname, pathname);	    
+	}
+	else {
+	    /* full pathname mode */
+	    st1=XmStringCreateSimple(prevOpenSorted[index]);
+    	}
+	
+    	/* update/add filepath onto menu */
+	if ((int)nItems <= index) {
+            btn = XtVaCreateManagedWidget("win", xmPushButtonWidgetClass,
+                window->prevOpenMenuPane, 
+                XmNlabelString, st1,
+                XmNmarginHeight, 0,
+		XmNmarginLeft, indentMargin,
+                XmNuserData, TEMPORARY_MENU_ITEM, NULL);
+            XtAddCallback(btn, XmNactivateCallback, (XtCallbackProc)openPrevCB, 
+                    prevOpenSorted[index]);
+	}
+	else {
+            XtVaSetValues(items[index],
+	            XmNlabelString, st1,
+                    XmNmarginLeft, indentMargin, NULL);
+            XtRemoveAllCallbacks(items[index], XmNactivateCallback);
+
+            XtAddCallback(items[index], XmNactivateCallback,
                     (XtCallbackProc)openPrevCB, prevOpenSorted[index]);
-            XmStringFree(st1);
-            index++;
-        }
+	}
+
+        XmStringFree(st1);
     }
     
-    /* Add new items for the remaining file names to the menu */
-    for (; index<NPrevOpen; index++) {
-        btn = XtVaCreateManagedWidget("win", xmPushButtonWidgetClass,
-                window->prevOpenMenuPane, 
-                XmNlabelString, st1=XmStringCreateSimple(prevOpenSorted[index]),
-                XmNmarginHeight, 0,
-                XmNuserData, TEMPORARY_MENU_ITEM, NULL);
-        XtAddCallback(btn, XmNactivateCallback, (XtCallbackProc)openPrevCB, 
-                prevOpenSorted[index]);
-        XmStringFree(st1);
+    /* delete the extras (???) in the menu */
+    for (;  index<(int)nItems; index++) {
+        /* unmanaging before destroying stops parent from displaying */
+        XtUnmanageChild(items[index]);
+        XtDestroyWidget(items[index]);  
     }
                 
     NEditFree(prevOpenSorted);
