@@ -5,6 +5,7 @@
 #include "window.h"
 #include "windowTitle.h"
 #include "userCmds.h"
+#include "menu.h"
 #include "../util/misc.h"
 #include "../util/DialogF.h"
 
@@ -242,12 +243,12 @@ static void smartMacrosDefCB(Widget w, WindowInfo *window, caddr_t callData)
 
 static void stylesDefCB(Widget w, WindowInfo *window, caddr_t callData)
 {
-    EditHighlightStyles(CallerWindow->shell, NULL);
+    EditHighlightStyles(NULL);
 }
 
 static void languageDefCB(Widget w, WindowInfo *window, caddr_t callData)
 {
-    EditLanguageModes(CallerWindow->shell);
+    EditLanguageModes();
 }
 
 #ifndef VMS
@@ -269,7 +270,7 @@ static void bgMenuDefCB(Widget w, WindowInfo *window, caddr_t callData)
 
 static void customizeTitleDefCB(Widget w, WindowInfo *window, caddr_t callData)
 {
-    EditCustomTitleFormat(CallerWindow->shell, CallerWindow);
+    EditCustomTitleFormat(window);
 }
 
 static void fontDefCB(Widget w, WindowInfo *window, caddr_t callData)
@@ -2356,7 +2357,7 @@ static void applyPreferencesCB(Widget w, XtPointer dialogParent,
 	SetPrefShowPathInWindowsMenu((state));
 	for (win=WindowList; win!=NULL; win=win->next) {
 	    win->windowMenuValid = False;
-	    win->showPathInWindowsMenu = state;
+    	    XmToggleButtonSetState(win->pathInWindowsMenuDefItem, state, False);
 	}
     }
     
@@ -2364,9 +2365,7 @@ static void applyPreferencesCB(Widget w, XtPointer dialogParent,
     state = XmToggleButtonGetState(sort_open_prev_w);
     if (state != GetPrefSortOpenPrevMenu()) {
 	SetPrefSortOpenPrevMenu(state);
-	for (win=WindowList; win!=NULL; win=win->next) {
-	    win->prevOpenMenuValid = False;
-	}
+	InvalidatePrevOpenMenus();
     }
     
     SetPrefSmartTags(XmToggleButtonGetState(tag_collision_w[1]));
@@ -2563,7 +2562,7 @@ void show_preferences(Widget parent)
     	make_preferences(parent);
     
     if (XtIsManaged(preferences_dialog)) {
-    	RaiseShellWindow(XtParent(preferences_dialog));
+    	RaiseDialogWindow(XtParent(preferences_dialog));
     } else {
         /* setup the hook to tie dialog to caller window */
     	CallerWindow = WidgetToWindow(parent);

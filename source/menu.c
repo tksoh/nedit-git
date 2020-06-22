@@ -355,7 +355,6 @@ static Widget createMenuRadioToggle(Widget parent, char *name, char *label,
 	char mnemonic, menuCallbackProc callback, void *cbArg, int set,
 	int mode);
 static Widget createMenuSeparator(Widget parent, char *name, int mode);
-static void invalidatePrevOpenMenus(void);
 static void updateWindowMenu(const WindowInfo *window);
 static void updatePrevOpenMenu(WindowInfo *window);
 static void updateTagsFileMenu(WindowInfo *window);
@@ -4249,7 +4248,7 @@ void InvalidateWindowMenus(void)
 ** Since actually changing the menus is slow, they're just marked and updated
 ** when the user pulls one down.
 */
-static void invalidatePrevOpenMenus(void)
+void InvalidatePrevOpenMenus(void)
 {
     WindowInfo *w;
 
@@ -4291,7 +4290,7 @@ void AddToPrevOpenMenu(const char *filename)
     	    nameCopy = PrevOpen[i];
     	    memmove(&PrevOpen[1], &PrevOpen[0], sizeof(char *) * i);
     	    PrevOpen[0] = nameCopy;
-    	    invalidatePrevOpenMenus();
+    	    InvalidatePrevOpenMenus();
 	    WriteNEditDB();
     	    return;
     	}
@@ -4310,7 +4309,7 @@ void AddToPrevOpenMenu(const char *filename)
     NPrevOpen++;
     
     /* Mark the Previously Opened Files menu as invalid in all windows */
-    invalidatePrevOpenMenus();
+    InvalidatePrevOpenMenus();
 
     /* Undim the menu in all windows if it was previously empty */
     if (NPrevOpen > 0) {
