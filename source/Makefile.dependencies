@@ -40,6 +40,11 @@ preferences.o: preferences.c preferences.h nedit.h textBuf.h text.h \
   ../util/prefFile.h ../util/misc.h ../util/DialogF.h \
   ../util/managedList.h ../util/fontsel.h ../util/fileUtils.h \
   ../util/utils.h ../util/clearcase.h
+pref_dialog.o: pref_dialog.c highlightData.h preferences.h search.h \
+  smartIndent.h window.h windowTitle.h userCmds.h menu.h ../util/misc.h \
+  ../util/DialogF.h
+
+
 rangeset.o: rangeset.c textBuf.h textDisp.h rangeset.h
 regexConvert.o: regexConvert.c regexConvert.h
 regularExp.o: regularExp.c regularExp.h
