@@ -6,6 +6,7 @@
 #include "windowTitle.h"
 #include "userCmds.h"
 #include "menu.h"
+#include "help.h"
 #include "../util/misc.h"
 #include "../util/DialogF.h"
 
@@ -1914,8 +1915,7 @@ static void register_menu_shell(MMDesc *items)
 
 static void HelpOnThisCB(Widget widget, XtPointer client_data, XtPointer call_data)
 {
-    DialogF(DF_INF, (Widget)client_data, 1,
-    	    "This feature is under construction", "OK");
+    Help(HELP_PREFERENCES);
 }
 
 static void savePreferencesCB(Widget w, XtPointer dialogParent, 

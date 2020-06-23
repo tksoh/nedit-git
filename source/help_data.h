@@ -2,10 +2,10 @@
 *                                                                              *
 * help_data.h --  Nirvana Editor help module data                              *
 *                                                                              *
-                 Generated on Jan 14, 2017 (Do NOT edit!)
+                 Generated on Jun 23, 2020 (Do NOT edit!)
                  Source of content from file help.etx
 *                                                                              *
-* Copyright (c) 1999-2017 Mark Edel                                            *
+* Copyright (c) 1999-2020 Mark Edel                                            *
 *                                                                              *
 * This is free software; you can redistribute it and/or modify it under the    *
 * terms of the GNU General Public License as published by the Free Software    *
@@ -3462,12 +3462,13 @@ static char * htxt_preferences [] = {
 "window, and default values for newly created windows and future NEdit ",
 "sessions.  Options in the Preferences menu itself (not in the Default ",
 "Settings sub-menu) take effect immediately and refer to the current window ",
-"only.  Options in the Default Settings sub-menu provide initial settings for ",
+"only.  Options in the Default Settings dialog provide initial settings for ",
 "future windows created using the New or Open commands; options affecting all ",
 "windows are also set here. ",
 "\n\n",
-"Preferences set in the Default Settings sub-menu are saved in a file that ",
-"NEdit reads at startup time, cf. \01QAutoload Files\01I, by selecting Save Defaults. ",
+"Preferences set in the Default Settings dialog are saved in a file that ",
+"NEdit reads at startup time, cf. \01QAutoload Files\01I, by clicking the Save ",
+"button in the dialog. ",
 "\n\n",
 "\01RPreferences Menu\01I",
 "\n\n",
@@ -5745,7 +5746,7 @@ Href H_R [] =
 {
     {&H_R[ 1],    54, HELP_TAGS,          "ctags support"},
     {&H_R[ 2],  5902, HELP_BASICSYNTAX,   "Alternation"},
-    {NULL,     14799, HELP_PREFERENCES,   "Autoload Files"}
+    {NULL,     14810, HELP_PREFERENCES,   "Autoload Files"}
 };
 
-static const char * NEditVersion = "NEdit 5.7\nJan 14, 2017\n";
+static const char * NEditVersion = "NEdit release of\nJun 23, 2020\n";

@@ -3645,12 +3645,13 @@ Preferences
   window, and default values for newly created windows and future NEdit
   sessions.  Options in the Preferences menu itself (not in the Default
   Settings sub-menu) take effect immediately and refer to the current window
-  only.  Options in the Default Settings sub-menu provide initial settings for
+  only.  Options in the Default Settings dialog provide initial settings for
   future windows created using the New or Open commands; options affecting all
   windows are also set here.
 
-  Preferences set in the Default Settings sub-menu are saved in a file that
-  NEdit reads at startup time, cf. Autoload_Files_, by selecting Save Defaults.
+  Preferences set in the Default Settings dialog are saved in a file that
+  NEdit reads at startup time, cf. Autoload_Files_, by clicking the Save 
+  button in the dialog.
 
 3>Preferences Menu
 
