@@ -325,6 +325,9 @@ static struct prefData {
     Boolean honorSymlinks;
     int truncSubstitution;
     Boolean forceOSConversion;
+    Boolean honorSymlinks1;
+    Boolean honorSymlinks2;
+    Boolean honorSymlinks3;
 } PrefData;
 
 /* Temporary storage for preferences strings which are discarded after being
@@ -1072,8 +1075,10 @@ static PrefDescripRec PrefDescrip[] = {
             &PrefData.forceOSConversion, NULL, False},
     {"truncSubstitution", "TruncSubstitution", PREF_ENUM, "Fail",
             &PrefData.truncSubstitution, TruncSubstitutionModes, False},
+    {"honorSymlinks", "honorSymlinks", PREF_BOOLEAN, "True",
+            &PrefData.honorSymlinks, NULL, False},
     {"honorSymlinks", "HonorSymlinks", PREF_BOOLEAN, "True",
-            &PrefData.honorSymlinks, NULL, False}
+            &PrefData.honorSymlinks1, NULL, False}
 };
 
 static XrmOptionDescRec OpTable[] = {
@@ -2007,6 +2012,11 @@ char *GetPrefColorName(int index)
 void SetPrefColorName(int index, const char *name)
 {
     setStringPref(PrefData.colorNames[index], name);
+}
+
+Boolean GetPrefUseSettingDialog(void)
+{
+   /*  return (Boolean) PrefData.useSettingDialog;  */
 }
 
 /*

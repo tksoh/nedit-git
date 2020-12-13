@@ -147,6 +147,7 @@ char *GetPrefHelpFontName(int index);
 char *GetPrefHelpLinkColor(void);
 char *GetPrefColorName(int colorIndex);
 void SetPrefColorName(int colorIndex, const char *color);
+Boolean GetPrefUseSettingDialog(void);
 void SetPrefShell(const char *shell);
 const char* GetPrefShell(void);
 char *GetPrefGeometry(void);
