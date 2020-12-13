@@ -811,6 +811,31 @@ int ReadMacroFile(WindowInfo *window, const char *fileName, int warnNotExist)
 }
 
 /*
+** Parse and optionally execute macro string in the macro editor window.
+** Report parsing errors in a dialog posted over window->shell, and 
+** position the cursor to the error location.
+*/
+void CheckMacroWindow(WindowInfo *window, Boolean runMacro)
+{
+    char *cmdText = BufGetAll(window->buffer);
+    char *stoppedAt;
+    WindowInfo * runWindow = runMacro? window : NULL;
+    
+    if (readCheckMacroString(window->shell, cmdText, runWindow,
+    	    window->filename, &stoppedAt)){
+	if (!runWindow)
+	    DialogF(DF_INF, window->shell, 1, "Macro compiled without error",
+    	    	    "Dismiss");
+    }
+    
+    if (stoppedAt) {
+    	TextSetCursorPos(window->lastFocus, stoppedAt - cmdText);
+	XmProcessTraversal(window->lastFocus, XmTRAVERSE_CURRENT);
+    }
+    XtFree(cmdText);
+}
+
+/*
 ** Parse and execute a macro string including macro definitions.  Report
 ** parsing errors in a dialog posted over window->shell.
 */

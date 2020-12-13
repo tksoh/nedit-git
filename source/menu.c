@@ -209,6 +209,7 @@ static void learnCB(Widget w, WindowInfo *window, caddr_t callData);
 static void finishLearnCB(Widget w, WindowInfo *window, caddr_t callData);
 static void cancelLearnCB(Widget w, WindowInfo *window, caddr_t callData);
 static void replayCB(Widget w, WindowInfo *window, caddr_t callData);
+static void checkMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData);
 static void windowMenuCB(Widget w, WindowInfo *window, caddr_t callData);
 static void prevOpenMenuCB(Widget w, WindowInfo *window, caddr_t callData);
 static void unloadTagsFileMenuCB(Widget w, WindowInfo *window,
@@ -335,6 +336,10 @@ static void execAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
 static void execLineAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
 static void shellMenuAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
 #endif
+static void checkMacroWindowAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs);
+static void checkMacroStringAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs);
 static void macroMenuAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
 static void bgMenuAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
 static void beginningOfSelectionAP(Widget w, XEvent *event, String *args,
@@ -549,6 +554,8 @@ static XtActionsRec Actions[] = {
     {"shell-menu-command", shellMenuAP},
     {"shell_menu_command", shellMenuAP},
 #endif /*VMS*/
+    {"check_macro_window", checkMacroWindowAP},
+    {"check_macro_string", checkMacroStringAP},
     {"macro-menu-command", macroMenuAP},
     {"macro_menu_command", macroMenuAP},
     {"bg_menu_command", bgMenuAP},
@@ -1175,6 +1182,14 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     */
     menuPane = window->macroMenuPane =
     	    createMenu(menuBar, "macroMenu", "Macro", 0, &cascade, FULL);
+    btn = createMenuItem(menuPane, "checkMacroWindow",
+	   "Check Window", 'W', checkMacroWindowCB, window, SHORT);
+    XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
+    btn = createFakeMenuItem(menuPane, "checkMacroWindowShift",
+	   checkMacroWindowCB, window);
+    XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
+    btn = createMenuSeparator(menuPane, "sep1", SHORT);
+    XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
     window->learnItem = createMenuItem(menuPane, "learnKeystrokes",
     	    "Learn Keystrokes", 'L', learnCB, window, SHORT);
     XtVaSetValues(window->learnItem , XmNuserData, PERMANENT_MENU_ITEM, NULL);
@@ -2682,6 +2697,20 @@ static void replayCB(Widget w, WindowInfo *window, caddr_t callData)
     Replay(WidgetToWindow(MENU_WIDGET(w)));
 }
 
+static void checkMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData)
+{
+    WindowInfo *window = WidgetToWindow(MENU_WIDGET(w));
+    static char *params[1] = {"1"};
+    XEvent *event = ((XmAnyCallbackStruct *)callData)->event;
+    int nArgs = event->xbutton.state & ShiftMask?  1 : 0;
+	    
+    HidePointerOnKeyedEvent(window->lastFocus,
+            ((XmAnyCallbackStruct *)callData)->event);
+	    
+    XtCallActionProc(window->lastFocus, "check_macro_window", 
+    	    event, params, nArgs);
+}
+
 static void windowMenuCB(Widget w, WindowInfo *window, caddr_t callData)
 {
     window = WidgetToWindow(MENU_WIDGET(w));
@@ -3455,6 +3484,40 @@ static void selectToMatchingAP(Widget w, XEvent *event, String *args,
 	Cardinal *nArgs)
 {
     SelectToMatchingCharacter(WidgetToWindow(w));
+}
+
+static void checkMacroWindowAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs)
+{
+    if (*nArgs > 0 && !strcmp(args[0], "1"))
+    	CheckMacroWindow(WidgetToWindow(w), True);
+    else
+    	CheckMacroWindow(WidgetToWindow(w), False);
+}
+
+static void checkMacroStringAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs)
+{
+    WindowInfo *window = WidgetToWindow(w);
+    Boolean runMacro = False;
+    
+    if (*nArgs < 1) {
+        DialogF(DF_WARN, window->shell, 1, 
+		"check_macro action requires macro string", "OK");
+        return;
+    }
+    
+    if (*nArgs > 1 && !strcmp(args[1], "1")) {
+    	runMacro = True;
+    }
+    
+    if (runMacro) 
+    	ReadMacroString(window, args[0], window->filename);
+    else {
+    	if (CheckMacroString(window->shell, args[0], window->filename, NULL))
+	    DialogF(DF_INF, window->shell, 1, "Macro compiled without error",
+	    	"Dismiss");
+    }
 }
 
 static void gotoMatchingAP(Widget w, XEvent *event, String *args,
