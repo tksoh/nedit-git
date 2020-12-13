@@ -824,7 +824,7 @@ void CheckMacroWindow(WindowInfo *window, Boolean runMacro)
     if (readCheckMacroString(window->shell, cmdText, runWindow,
     	    window->filename, &stoppedAt)){
 	if (!runWindow)
-	    DialogF(DF_INF, window->shell, 1, "Macro compiled without error",
+	    DialogF(DF_INF, window->shell, 1, "Macro", "Macro compiled without error",
     	    	    "Dismiss");
     }
     
