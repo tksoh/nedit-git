@@ -215,6 +215,8 @@ typedef struct {
     Widget boldItalicErrW;
     WindowInfo *window;
     int forWindow;
+    Boolean applyToAllWindows;
+    Boolean setAsDefault;
 } fontDialog;
 
 /* Color dialog information */
@@ -1174,6 +1176,8 @@ static void fontOkCB(Widget w, XtPointer clientData, XtPointer callData);
 static void fontApplyCB(Widget w, XtPointer clientData, XtPointer callData);
 static void fontCancelCB(Widget w, XtPointer clientData, XtPointer callData);
 static void updateFonts(fontDialog *fd);
+static void applyFontOptionCB(Widget w, XtPointer clientData, XtPointer callData);
+static void applyDefFontOptionCB(Widget w, XtPointer clientData, XtPointer callData);
 
 static Boolean checkColorStatus(colorDialog *cd, Widget colorFieldW);
 static int verifyAllColors (colorDialog *cd);
@@ -3810,6 +3814,8 @@ void ChooseFonts(WindowInfo *window, int forWindow)
     Widget boldLbl, boldBtn, boldItalicLbl, boldItalicBtn;
     Widget primaryFrame, primaryForm, highlightFrame, highlightForm;
     Widget okBtn, applyBtn, cancelBtn;
+    Widget optionForm, lowestFrame, optionFrame;
+    Widget applyToAllToggle, setAsDefToggle;
     fontDialog *fd;
     XmString s1;
     int ac;
@@ -4071,11 +4077,65 @@ void ChooseFonts(WindowInfo *window, int forWindow)
     	    boldItalicModifiedCB, fd);
     XtVaSetValues(boldItalicLbl, XmNuserData, fd->boldItalicW, NULL);    
 
+    /* add additional options when in non-global setting */
+    if (forWindow) {
+	optionFrame = XtVaCreateManagedWidget("optionFrame",
+		xmFrameWidgetClass, form,
+		XmNmarginHeight, 3,
+		XmNnavigationType, XmTAB_GROUP,
+		XmNtopAttachment, XmATTACH_WIDGET,
+		XmNtopWidget, highlightFrame,
+		XmNtopOffset, 20,
+		XmNleftAttachment, XmATTACH_POSITION,
+		XmNleftPosition, 1,
+		XmNrightAttachment, XmATTACH_POSITION,
+		XmNrightPosition, 99, NULL);
+
+	optionForm = XtVaCreateManagedWidget("optionForm", xmFormWidgetClass,
+		optionFrame, NULL);
+
+	XtVaCreateManagedWidget("fontOptions", xmLabelGadgetClass,
+		optionFrame,
+		XmNlabelString,
+		    s1=XmStringCreateSimple("Options"),
+		XmNchildType, XmFRAME_TITLE_CHILD,
+		XmNchildHorizontalAlignment, XmALIGNMENT_CENTER, NULL);
+	XmStringFree(s1);
+
+	applyToAllToggle = XtVaCreateManagedWidget("applyToAllToggle",
+		xmToggleButtonWidgetClass, optionForm, XmNlabelString,
+		    s1=XmStringCreateSimple("Apply to all opened documents"),
+		XmNmnemonic, 'A',
+		XmNtopAttachment, XmATTACH_FORM,
+		XmNleftAttachment, XmATTACH_FORM,
+		NULL);
+	XmStringFree(s1);
+	XtAddCallback(applyToAllToggle, XmNvalueChangedCallback, applyFontOptionCB, fd);
+	XmToggleButtonSetState(applyToAllToggle, False, False);
+	fd->applyToAllWindows = False;
+
+	setAsDefToggle = XtVaCreateManagedWidget("setAsDefToggle",
+		xmToggleButtonWidgetClass, optionForm, XmNlabelString,
+		    s1=XmStringCreateSimple("Set as default fonts"),
+		XmNmnemonic, 'd',
+		XmNtopAttachment, XmATTACH_WIDGET,
+		XmNtopWidget, applyToAllToggle,
+		XmNleftAttachment, XmATTACH_FORM,
+		XmNbottomAttachment, XmATTACH_FORM,
+		NULL);
+	XmStringFree(s1);
+	XtAddCallback(setAsDefToggle, XmNvalueChangedCallback, applyDefFontOptionCB, fd);
+	XmToggleButtonSetState(setAsDefToggle, False, False);
+	fd->setAsDefault = False;
+    }
+
+    lowestFrame = forWindow? optionFrame : highlightFrame;
+
     okBtn = XtVaCreateManagedWidget("ok", xmPushButtonWidgetClass, form,
             XmNlabelString, s1=XmStringCreateSimple("OK"),
             XmNmarginWidth, BUTTON_WIDTH_MARGIN,
     	    XmNtopAttachment, XmATTACH_WIDGET,
-	    XmNtopWidget, highlightFrame,
+	    XmNtopWidget, lowestFrame,
 	    XmNtopOffset, MARGIN_SPACING,
     	    XmNleftAttachment, XmATTACH_POSITION,
     	    XmNleftPosition, forWindow ? 13 : 26,
@@ -4089,7 +4149,7 @@ void ChooseFonts(WindowInfo *window, int forWindow)
     		XmNlabelString, s1=XmStringCreateSimple("Apply"),
     		XmNmnemonic, 'A',
     		XmNtopAttachment, XmATTACH_WIDGET,
-		XmNtopWidget, highlightFrame,
+		XmNtopWidget, lowestFrame,
 		XmNtopOffset, MARGIN_SPACING,
     		XmNleftAttachment, XmATTACH_POSITION,
     		XmNleftPosition, 43,
@@ -4104,7 +4164,7 @@ void ChooseFonts(WindowInfo *window, int forWindow)
             XmNlabelString,
                     s1 = XmStringCreateSimple(forWindow ? "Close" : "Cancel"),
     	    XmNtopAttachment, XmATTACH_WIDGET,
-	    XmNtopWidget, highlightFrame,
+	    XmNtopWidget, lowestFrame,
 	    XmNtopOffset, MARGIN_SPACING,
     	    XmNleftAttachment, XmATTACH_POSITION,
     	    XmNleftPosition, forWindow ? 73 : 59,
@@ -4263,6 +4323,18 @@ static void fontCancelCB(Widget w, XtPointer clientData, XtPointer callData)
     XtDestroyWidget(fd->shell);
 }
 
+static void applyFontOptionCB(Widget w, XtPointer clientData, XtPointer callData)
+{
+    fontDialog *fd = (fontDialog *)clientData;
+    fd->applyToAllWindows = XmToggleButtonGetState(w);
+}
+
+static void applyDefFontOptionCB(Widget w, XtPointer clientData, XtPointer callData)
+{
+    fontDialog *fd = (fontDialog *)clientData;
+    fd->setAsDefault = XmToggleButtonGetState(w);
+}
+
 /*
 ** Check over a font name in a text field to make sure it agrees with the
 ** primary font in height and spacing.
@@ -4376,6 +4448,7 @@ static void browseFont(Widget parent, Widget fontTextW)
 static void updateFonts(fontDialog *fd)
 {
     char *fontName, *italicName, *boldName, *boldItalicName;
+    WindowInfo *win;
     
     fontName = XmTextGetString(fd->primaryW);
     italicName = XmTextGetString(fd->italicW);
@@ -4388,10 +4461,22 @@ static void updateFonts(fontDialog *fd)
         params[1] = italicName;
         params[2] = boldName;
         params[3] = boldItalicName;
-        XtCallActionProc(fd->window->textArea, "set_fonts", NULL, params, 4);
-/*
-    	SetFonts(fd->window, fontName, italicName, boldName, boldItalicName);
-*/
+
+	if (fd->applyToAllWindows) {
+	    for (win=WindowList; win!=NULL; win=win->next) {
+		XtCallActionProc(win->textArea, "set_fonts", NULL, params, 4);
+	    }
+	}
+	else {
+	    XtCallActionProc(fd->window->textArea, "set_fonts", NULL, params, 4);
+	}
+
+	if (fd->setAsDefault) {
+	     SetPrefFont(fontName);
+	     SetPrefItalicFont(italicName);
+	     SetPrefBoldFont(boldName);
+	     SetPrefBoldItalicFont(boldItalicName);
+	}
     }
     else {
     	SetPrefFont(fontName);
