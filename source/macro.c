@@ -817,10 +817,19 @@ int ReadMacroFile(WindowInfo *window, const char *fileName, int warnNotExist)
 */
 void CheckMacroWindow(WindowInfo *window, Boolean runMacro)
 {
-    char *cmdText = BufGetAll(window->buffer);
+    char lastChar;
+    char *cmdText;
     char *stoppedAt;
     WindowInfo * runWindow = runMacro? window : NULL;
     
+    /* the macro compile want the macro be terminated with newline */
+    lastChar = BufGetCharacter(window->buffer, window->buffer->length-1);
+    if (lastChar != '\n' && lastChar != '\r') {
+	BufInsert(window->buffer, window->buffer->length, "\n");
+    }
+
+    cmdText = BufGetAll(window->buffer);
+
     if (readCheckMacroString(window->shell, cmdText, runWindow,
     	    window->filename, &stoppedAt)){
 	if (!runWindow)
