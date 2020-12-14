@@ -841,7 +841,7 @@ void CheckMacroWindow(WindowInfo *window, Boolean runMacro)
     	TextSetCursorPos(window->lastFocus, stoppedAt - cmdText);
 	XmProcessTraversal(window->lastFocus, XmTRAVERSE_CURRENT);
     }
-    XtFree(cmdText);
+    NEditFree(cmdText);
 }
 
 /*
