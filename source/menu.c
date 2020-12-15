@@ -2711,26 +2711,19 @@ static void replayCB(Widget w, WindowInfo *window, caddr_t callData)
 static void checkMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData)
 {
     WindowInfo *window = WidgetToWindow(MENU_WIDGET(w));
-    static char *params[1] = {"1"};
     XEvent *event = ((XmAnyCallbackStruct *)callData)->event;
-    int nArgs = 0;
-	    
-    HidePointerOnKeyedEvent(window->lastFocus,
-            ((XmAnyCallbackStruct *)callData)->event);
 	    
     XtCallActionProc(window->lastFocus, "check_macro_window", 
-    	    event, params, nArgs);
+            event, NULL, 0);
 }
 
 static void runMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData)
 {
     WindowInfo *window = WidgetToWindow(MENU_WIDGET(w));
-    static char *params[1] = {"1"};
     XEvent *event = ((XmAnyCallbackStruct *)callData)->event;
-    int nArgs = 1;
 
     XtCallActionProc(window->lastFocus, "run_macro_window", 
-	    event, params, nArgs);
+	    event, NULL, 0);
 }
 
 static void pasteMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData)
