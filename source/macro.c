@@ -575,6 +575,7 @@ void BeginLearn(WindowInfo *window)
     	if (!IsTopDocument(win))
 	    continue;
 	XtSetSensitive(win->learnItem, False);
+	XtSetSensitive(win->macroEditItem, False);
     }
     SetSensitive(window, window->finishLearnItem, True);
     XtVaSetValues(window->cancelMacroItem, XmNlabelString,
@@ -672,6 +673,7 @@ void FinishLearn(void)
     	if (!IsTopDocument(win))
 	    continue;
 	XtSetSensitive(win->learnItem, True);
+	XtSetSensitive(win->macroEditItem, True);
     }
     if (IsTopDocument(MacroRecordWindow)) {
 	XtSetSensitive(MacroRecordWindow->finishLearnItem, False);
@@ -722,6 +724,7 @@ static void cancelLearn(void)
     	if (!IsTopDocument(win))
 	    continue;
 	XtSetSensitive(win->learnItem, True);
+	XtSetSensitive(win->macroEditItem, True);
     }
     if (IsTopDocument(MacroRecordWindow)) {
 	XtSetSensitive(MacroRecordWindow->finishLearnItem, False);
