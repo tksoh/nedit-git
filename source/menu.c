@@ -2729,7 +2729,7 @@ static void runMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData)
     XEvent *event = ((XmAnyCallbackStruct *)callData)->event;
     int nArgs = 1;
 
-    XtCallActionProc(window->lastFocus, "paste_macro_window", 
+    XtCallActionProc(window->lastFocus, "run_macro_window", 
 	    event, params, nArgs);
 }
 
