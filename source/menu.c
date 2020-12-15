@@ -1187,7 +1187,7 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     */
     menuPane = window->macroMenuPane =
     	    createMenu(menuBar, "macroMenu", "Macro", 0, &cascade, FULL);
-    subPane = createMenu(menuPane, "macroIDE", "Macro IDE", 0,
+    subPane = createMenu(menuPane, "macroEdit", "Macro Editing", 0,
 	    NULL, FULL);
     btn = createMenuItem(subPane, "checkMacroWindow",
 	   "Check Macro in Window", 'W', checkMacroWindowCB, window, SHORT);
@@ -1195,12 +1195,9 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     btn = createMenuItem(subPane, "runMacroWindow",
 	   "Run Macro in Window", 'W', runMacroWindowCB, window, SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
-    btn = createMenuItem(subPane, "pasteMacroToWindow",
+    window->pasteReplayMacroItem = createMenuItem(subPane, "pasteMacroToWindow",
 	   "Paste Learn/Replay Macro", 'W', pasteMacroWindowCB, window, SHORT);
-    XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
-    window->pasteReplayMacroItem = btn;
-    btn = createMenuSeparator(menuPane, "sep1", SHORT);
-    XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
+    XtVaSetValues(window->pasteReplayMacroItem, XmNuserData, PERMANENT_MENU_ITEM, NULL);
     window->learnItem = createMenuItem(menuPane, "learnKeystrokes",
     	    "Learn Keystrokes", 'L', learnCB, window, SHORT);
     XtVaSetValues(window->learnItem , XmNuserData, PERMANENT_MENU_ITEM, NULL);
