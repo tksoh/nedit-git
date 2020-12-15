@@ -441,6 +441,7 @@ typedef struct _WindowInfo {
     Widget	moveDocumentItem;
     Widget	contextMoveDocumentItem;
     Widget	contextDetachDocumentItem;
+    Widget	pasteReplayMacroItem;
     Widget  	bgMenuUndoItem;
     Widget  	bgMenuRedoItem;
 #ifdef SGI_CUSTOM

@@ -1198,6 +1198,7 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     btn = createMenuItem(subPane, "pasteMacroToWindow",
 	   "Paste Learn/Replay Macro", 'W', pasteMacroWindowCB, window, SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
+    window->pasteReplayMacroItem = btn;
     btn = createMenuSeparator(menuPane, "sep1", SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
     window->learnItem = createMenuItem(menuPane, "learnKeystrokes",
@@ -2743,6 +2744,18 @@ static void pasteMacroWindowCB(Widget w, XtPointer clientData, XtPointer callDat
     int curPos = TextGetCursorPos(window->lastFocus);
     BufInsert(window->buffer, curPos, GetReplayMacro());
     TextSetCursorPos(window->lastFocus, curPos + strlen(macroStr));
+}
+
+void DimPasteReplayMenu()
+{
+    WindowInfo *win;
+    int enabled = GetReplayMacro() == NULL? 0: 1;
+
+    for (win=WindowList; win!=NULL; win=win->next) {
+        if (IsTopDocument(win)) {
+            XtSetSensitive(win->pasteReplayMacroItem, enabled);
+        }
+    }
 }
 
 static void windowMenuCB(Widget w, WindowInfo *window, caddr_t callData)
