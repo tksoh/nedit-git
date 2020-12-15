@@ -210,6 +210,7 @@ static void finishLearnCB(Widget w, WindowInfo *window, caddr_t callData);
 static void cancelLearnCB(Widget w, WindowInfo *window, caddr_t callData);
 static void replayCB(Widget w, WindowInfo *window, caddr_t callData);
 static void checkMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData);
+static void runMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData);
 static void windowMenuCB(Widget w, WindowInfo *window, caddr_t callData);
 static void prevOpenMenuCB(Widget w, WindowInfo *window, caddr_t callData);
 static void unloadTagsFileMenuCB(Widget w, WindowInfo *window,
@@ -337,6 +338,8 @@ static void execLineAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
 static void shellMenuAP(Widget w, XEvent *event, String *args, Cardinal *nArgs);
 #endif
 static void checkMacroWindowAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs);
+static void runMacroWindowAP(Widget w, XEvent *event, String *args,
 	Cardinal *nArgs);
 static void checkMacroStringAP(Widget w, XEvent *event, String *args,
 	Cardinal *nArgs);
@@ -555,6 +558,7 @@ static XtActionsRec Actions[] = {
     {"shell_menu_command", shellMenuAP},
 #endif /*VMS*/
     {"check_macro_window", checkMacroWindowAP},
+    {"run_macro_window", runMacroWindowAP},
     {"check_macro_string", checkMacroStringAP},
     {"macro-menu-command", macroMenuAP},
     {"macro_menu_command", macroMenuAP},
@@ -1182,11 +1186,13 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     */
     menuPane = window->macroMenuPane =
     	    createMenu(menuBar, "macroMenu", "Macro", 0, &cascade, FULL);
-    btn = createMenuItem(menuPane, "checkMacroWindow",
-	   "Check Window", 'W', checkMacroWindowCB, window, SHORT);
+    subPane = createMenu(menuPane, "macroIDE", "Macro IDE", 0,
+	    NULL, FULL);
+    btn = createMenuItem(subPane, "checkMacroWindow",
+	   "Check Macro in Window", 'W', checkMacroWindowCB, window, SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
-    btn = createFakeMenuItem(menuPane, "checkMacroWindowShift",
-	   checkMacroWindowCB, window);
+    btn = createMenuItem(subPane, "runMacroWindow",
+	   "Run Macro in Window", 'W', runMacroWindowCB, window, SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
     btn = createMenuSeparator(menuPane, "sep1", SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
@@ -2702,13 +2708,24 @@ static void checkMacroWindowCB(Widget w, XtPointer clientData, XtPointer callDat
     WindowInfo *window = WidgetToWindow(MENU_WIDGET(w));
     static char *params[1] = {"1"};
     XEvent *event = ((XmAnyCallbackStruct *)callData)->event;
-    int nArgs = event->xbutton.state & ShiftMask?  1 : 0;
+    int nArgs = 0;
 	    
     HidePointerOnKeyedEvent(window->lastFocus,
             ((XmAnyCallbackStruct *)callData)->event);
 	    
     XtCallActionProc(window->lastFocus, "check_macro_window", 
     	    event, params, nArgs);
+}
+
+static void runMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData)
+{
+    WindowInfo *window = WidgetToWindow(MENU_WIDGET(w));
+    static char *params[1] = {"1"};
+    XEvent *event = ((XmAnyCallbackStruct *)callData)->event;
+    int nArgs = 1;
+
+    XtCallActionProc(window->lastFocus, "run_macro_window", 
+	    event, params, nArgs);
 }
 
 static void windowMenuCB(Widget w, WindowInfo *window, caddr_t callData)
@@ -3489,10 +3506,13 @@ static void selectToMatchingAP(Widget w, XEvent *event, String *args,
 static void checkMacroWindowAP(Widget w, XEvent *event, String *args,
 	Cardinal *nArgs)
 {
-    if (*nArgs > 0 && !strcmp(args[0], "1"))
-    	CheckMacroWindow(WidgetToWindow(w), True);
-    else
-    	CheckMacroWindow(WidgetToWindow(w), False);
+    CheckMacroWindow(WidgetToWindow(w), False);
+}
+
+static void runMacroWindowAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs)
+{
+    CheckMacroWindow(WidgetToWindow(w), True);
 }
 
 static void checkMacroStringAP(Widget w, XEvent *event, String *args,
