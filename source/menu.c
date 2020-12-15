@@ -211,6 +211,7 @@ static void cancelLearnCB(Widget w, WindowInfo *window, caddr_t callData);
 static void replayCB(Widget w, WindowInfo *window, caddr_t callData);
 static void checkMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData);
 static void runMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData);
+static void pasteMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData);
 static void windowMenuCB(Widget w, WindowInfo *window, caddr_t callData);
 static void prevOpenMenuCB(Widget w, WindowInfo *window, caddr_t callData);
 static void unloadTagsFileMenuCB(Widget w, WindowInfo *window,
@@ -1193,6 +1194,9 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
     btn = createMenuItem(subPane, "runMacroWindow",
 	   "Run Macro in Window", 'W', runMacroWindowCB, window, SHORT);
+    XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
+    btn = createMenuItem(subPane, "pasteMacroToWindow",
+	   "Paste Learn/Replay Macro", 'W', pasteMacroWindowCB, window, SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
     btn = createMenuSeparator(menuPane, "sep1", SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
@@ -2724,8 +2728,21 @@ static void runMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData)
     XEvent *event = ((XmAnyCallbackStruct *)callData)->event;
     int nArgs = 1;
 
-    XtCallActionProc(window->lastFocus, "run_macro_window", 
+    XtCallActionProc(window->lastFocus, "paste_macro_window", 
 	    event, params, nArgs);
+}
+
+static void pasteMacroWindowCB(Widget w, XtPointer clientData, XtPointer callData)
+{
+    WindowInfo *window = WidgetToWindow(MENU_WIDGET(w));
+    char *macroStr = GetReplayMacro();
+
+    if (macroStr == NULL)
+        return;
+
+    int curPos = TextGetCursorPos(window->lastFocus);
+    BufInsert(window->buffer, curPos, GetReplayMacro());
+    TextSetCursorPos(window->lastFocus, curPos + strlen(macroStr));
 }
 
 static void windowMenuCB(Widget w, WindowInfo *window, caddr_t callData)
