@@ -2736,14 +2736,19 @@ static void pasteMacroWindowCB(Widget w, XtPointer clientData, XtPointer callDat
     TextSetCursorPos(window->lastFocus, curPos + strlen(macroStr));
 }
 
-void DimPasteReplayMenu()
+void DimMacroEditingMenus()
 {
     WindowInfo *win;
     int enabled = GetReplayMacro() == NULL? 0: 1;
 
     for (win=WindowList; win!=NULL; win=win->next) {
         if (IsTopDocument(win)) {
+            char *langName = LanguageModeName(win->languageMode);
+            int isNM = langName != NULL && strcmp(langName, "NEdit Macro") == 0?
+		    True: False;
+
             XtSetSensitive(win->pasteReplayMacroItem, enabled);
+            XtSetSensitive(win->macroEditItem, isNM);
         }
     }
 }

@@ -801,7 +801,7 @@ WindowInfo *CreateWindow(const char *name, char *geometry, int iconic)
     }
     
     /* dim/undim paste learn macro menu*/
-    DimPasteReplayMenu();
+    DimMacroEditingMenus();
     
     return window;
 }

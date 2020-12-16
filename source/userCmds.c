@@ -1420,6 +1420,7 @@ static void updateMenu(WindowInfo *window, int menuType)
     }
 
     DimSelectionDepUserMenuItems(window, window->buffer->primary.selected);
+    DimMacroEditingMenus();
 }
 
 /*

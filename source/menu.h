@@ -49,6 +49,6 @@ void HidePointerOnKeyedEvent(Widget w, XEvent *event);
 Widget CreateTabContextMenu(Widget parent, WindowInfo *window);
 void AddTabContextMenuAction(Widget widget);
 void ShowHiddenTearOff(Widget menuPane);
-void DimPasteReplayMenu();
+void DimMacroEditingMenus();
 
 #endif /* NEDIT_MENU_H_INCLUDED */

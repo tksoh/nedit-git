@@ -687,7 +687,7 @@ void FinishLearn(void)
     	XtSetSensitive(win->replayItem, True);
     }
     DimPasteReplayBtns(True);
-    DimPasteReplayMenu(True);
+    DimMacroEditingMenus(True);
     
     /* Clear learn-mode banner */
     ClearModeMessage(MacroRecordWindow);
