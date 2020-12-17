@@ -116,13 +116,15 @@
 #include "../debug.h"
 #endif
 
-/* Initial minimum height of a pane.  Just a fallback in case setPaneMinHeight
+/* Initial minimum height of a pane.  Just a fallback in case SetPaneMinHeight
    (which may break in a future release) is not available */
 #define PANE_MIN_HEIGHT 39
 
 /* Thickness of 3D border around statistics and/or incremental search areas
    below the main menu bar */
 #define STAT_SHADOW_THICKNESS 1
+
+void SaveRecentFileInfo(WindowInfo *window);
 
 /* bitmap data for the close-tab button */
 #define close_width 11
@@ -176,8 +178,8 @@ static void dragStartCB(Widget w, WindowInfo *window, XtPointer callData);
 static void dragEndCB(Widget w, WindowInfo *window, dragEndCBStruct *callData);
 static void closeCB(Widget w, WindowInfo *window, XtPointer callData);
 static void saveYourselfCB(Widget w, Widget appShell, XtPointer callData);
-static void setPaneDesiredHeight(Widget w, int height);
-static void setPaneMinHeight(Widget w, int min);
+void SetPaneDesiredHeight(Widget w, int height);
+void SetPaneMinHeight(Widget w, int min);
 static void addWindowIcon(Widget shell);
 static void wmSizeUpdateProc(XtPointer clientData, XtIntervalId *id);
 static void getGeometryString(WindowInfo *window, char *geomString);
@@ -977,6 +979,12 @@ void CloseWindow(WindowInfo *window)
        but LessTif doesn't even (always) honor application modalness, so
        there can be more than one dialog. */
     RemoveFromMultiReplaceDialog(window);
+
+    /* save current state of window(file) to database */
+    if (window->filenameSet && window->lastModTime) {
+        SaveRecentFileInfo(window);
+        window->nMarks = 0;
+    }
     
     /* Destroy the file closed property for this file */
     DeleteFileClosedProperty(window);
@@ -2844,11 +2852,11 @@ void AllWindowsUnbusy(void)
 ** will probably break in a future release of Motif because of dependence on
 ** private data.
 */
-static void setPaneDesiredHeight(Widget w, int height)
+void SetPaneDesiredHeight(Widget w, int height)
 {
     ((XmPanedWindowConstraintPtr)w->core.constraints)->panedw.dheight = height;
 }
-static void setPaneMinHeight(Widget w, int min)
+void SetPaneMinHeight(Widget w, int min)
 {
     ((XmPanedWindowConstraintPtr)w->core.constraints)->panedw.min = min;
 }

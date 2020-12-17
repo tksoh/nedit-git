@@ -199,6 +199,7 @@ WindowInfo *EditExistingFile(WindowInfo *inWindow, const char *name,
 {
     WindowInfo *window;
     char fullname[MAXPATHLEN];
+    int restored;
     
     /* first look to see if file is already displayed in a window */
     window = FindWindowWithFile(name, path);
@@ -266,6 +267,9 @@ WindowInfo *EditExistingFile(WindowInfo *inWindow, const char *name,
     UpdateWindowTitle(window);
     UpdateWindowReadOnly(window);
     UpdateStatsLine(window);
+
+    /* restore previous editing settings */
+    restored = RestoreRecentFileInfo(window);
     
     /* Add the name to the convenience menu of previously opened files */
     strcpy(fullname, path);
@@ -274,6 +278,12 @@ WindowInfo *EditExistingFile(WindowInfo *inWindow, const char *name,
       	AddRelTagsFile(GetPrefTagFile(), path, TAG);
     AddToPrevOpenMenu(fullname);
 
+    if (!restored) {
+	if (languageMode == NULL)
+    	    DetermineLanguageMode(window, True);
+	else
+	    SetLanguageMode(window, FindLanguageMode(languageMode), True);
+    }
     return window;
 }
 

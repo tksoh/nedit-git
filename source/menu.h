@@ -49,5 +49,8 @@ void HidePointerOnKeyedEvent(Widget w, XEvent *event);
 Widget CreateTabContextMenu(Widget parent, WindowInfo *window);
 void AddTabContextMenuAction(Widget widget);
 void ShowHiddenTearOff(Widget menuPane);
-
+void SaveRecentFileInfo(WindowInfo *window);
+int RestoreRecentFileInfo(WindowInfo *window);
+void SaveSession(char *sessionName, int deleteSession);
+int RestoreSession(char *sessionName);
 #endif /* NEDIT_MENU_H_INCLUDED */

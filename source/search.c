@@ -101,10 +101,10 @@ typedef struct {
 } SearchSelectedCallData;
 
 /* History mechanism for search and replace strings */
-static char *SearchHistory[MAX_SEARCH_HISTORY];
-static char *ReplaceHistory[MAX_SEARCH_HISTORY];
-static int SearchTypeHistory[MAX_SEARCH_HISTORY];
-static int HistStart = 0;
+char *SearchHistory[MAX_SEARCH_HISTORY];
+char *ReplaceHistory[MAX_SEARCH_HISTORY];
+int SearchTypeHistory[MAX_SEARCH_HISTORY];
+int HistStart = 0;
 
 static int textFieldNonEmpty(Widget w);
 static void setTextField(WindowInfo* window, Time time, Widget textField);

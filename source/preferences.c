@@ -319,6 +319,7 @@ static struct prefData {
     char helpFontNames[NUM_HELP_FONTS][MAX_FONT_LEN];/* fonts for help system */
     char helpLinkColor[MAX_COLOR_LEN]; 	/* Color for hyperlinks in the help system */
     char colorNames[NUM_COLORS][MAX_COLOR_LEN];
+    int restoreRecentFile;
     char tooltipBgColor[MAX_COLOR_LEN];
     int  undoModifiesSelection;
     int  focusOnRaise;
@@ -1064,6 +1065,8 @@ static PrefDescripRec PrefDescrip[] = {
       PREF_ENUM, "Auto", &PrefData.virtKeyOverride, VirtKeyOverrideModes, False},
     {"titleFormat", "TitleFormat", PREF_STRING, "{%c} [%s] %f (%S) - %d",
 	PrefData.titleFormat, (void *)sizeof(PrefData.titleFormat), True},
+    {"restoreRecentFile", "RestoreRecentFile", PREF_BOOLEAN, "True",
+    	&PrefData.restoreRecentFile, NULL, False},
     {"undoModifiesSelection", "UndoModifiesSelection", PREF_BOOLEAN,
         "True", &PrefData.undoModifiesSelection, NULL, False},
     {"focusOnRaise", "FocusOnRaise", PREF_BOOLEAN,
@@ -2181,6 +2184,16 @@ Boolean GetPrefHonorSymlinks(void)
 int GetPrefOverrideVirtKeyBindings(void)
 {
     return PrefData.virtKeyOverride;
+}
+
+int GetPrefRestoreRecentFile(void)
+{
+    return PrefData.restoreRecentFile;
+}
+
+void SetPrefRestoreRecentFile(int state)
+{
+    setIntPref(&PrefData.restoreRecentFile, state);
 }
 
 int GetPrefTruncSubstitution(void)

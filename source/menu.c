@@ -31,6 +31,9 @@
 #endif
 
 #include "menu.h"
+#include <X11/IntrinsicP.h>
+#include <Xm/List.h>
+#include <Xm/SelectioB.h>
 #include "textBuf.h"
 #include "text.h"
 #include "nedit.h"
@@ -70,9 +73,11 @@
 
 #ifdef VMS
 #include "../util/VMSparam.h"
+#define NEDIT_SESSION_FILE_NAME ".nedit.session"
 #else
 #ifndef __MVS__
 #include <sys/param.h>
+#define NEDIT_SESSION_FILE_NAME ".nedit.session"
 #endif
 #endif /*VMS*/
 
@@ -95,6 +100,23 @@
 #define MENU_WIDGET(w) (w)
 #endif
 
+/* max line length of session file */
+#define MAX_SESSION_LINE_LEN MAXPATHLEN + 40
+#define MAX_RECENT_FILES 30
+
+/* structure for handling list in listbox */
+typedef struct 
+{
+    int    size;
+    XmString *items;
+} ListItem;
+
+extern char *SearchHistory[MAX_SEARCH_HISTORY];
+extern char *ReplaceHistory[MAX_SEARCH_HISTORY];
+extern int SearchTypeHistory[MAX_SEARCH_HISTORY];
+extern int HistStart;
+extern int NHist;
+
 /* Menu modes for SGI_CUSTOM short-menus feature */
 enum menuModes {FULL, SHORT};
 
@@ -102,6 +124,29 @@ typedef void (*menuCallbackProc)();
 
 extern void _XmDismissTearOff(Widget, XtPointer, XtPointer);
 
+/* Module-global variables for Session dialog */
+static int DoneWithSessionDialog;
+
+static ListItem getSessionList(void);
+static void freeListItem(ListItem list);
+static void saveSessionDialog(Widget parent);
+static void openSessionDialog(Widget parent);
+void saveSearchHistory(WindowInfo *window, const char *searchString,
+	const char *replaceString, int searchType, int isIncremental);
+static void saveSessionDialogAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs);
+static void openSessionDialogAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs);
+static void openSessionAP(Widget w, XEvent *event, String *args,
+       Cardinal *nArgs);
+static void saveSessionAP(Widget w, XEvent *event, String *args,
+       Cardinal *nArgs);
+static void updateSessionList(Widget dialog);
+static void openSessionOKCB(Widget widget, XtPointer clientData, XtPointer callData);
+static void openSessionCancelCB(Widget w, XtPointer clientData, XtPointer callData);
+static void saveSessionOKCB(Widget widget, XtPointer clientData, XtPointer callData);
+static void saveSessionCancelCB(Widget w, XtPointer clientData, XtPointer callData);
+static void deleteSessionCB(Widget dialog, XtPointer clientData, XtPointer callData);
 static void doActionCB(Widget w, XtPointer clientData, XtPointer callData);
 static void doTabActionCB(Widget w, XtPointer clientData, XtPointer callData);
 static void pasteColCB(Widget w, XtPointer clientData, XtPointer callData); 
@@ -446,6 +491,14 @@ static XtActionsRec Actions[] = {
     {"revert-to-saved", revertAP},
     {"revert_to_saved", revertAP},
     {"revert_to_saved_dialog", revertDialogAP},
+    {"save_session_dialog", saveSessionDialogAP},
+    {"open_session_dialog", openSessionDialogAP},
+    {"save-session-dialog", saveSessionDialogAP},
+    {"open-session-dialog", openSessionDialogAP},
+    {"save_session", saveSessionAP},
+    {"open_session", openSessionAP},
+    {"save-session", saveSessionAP},
+    {"open-session", openSessionAP},
     {"include-file", includeAP},
     {"include_file", includeAP},
     {"include-file-dialog", includeDialogAP},
@@ -683,6 +736,11 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     createMenuItem(menuPane, "revertToSaved", "Revert to Saved", 'R',
     	    doActionCB, "revert_to_saved_dialog", SHORT);
     createMenuSeparator(menuPane, "sep2", SHORT);
+    createMenuItem(menuPane, "openSession", "Open Session...", 0,
+    	    doActionCB, "open_session_dialog", SHORT);
+    createMenuItem(menuPane, "saveSession", "Save Session As...", 0,
+    	    doActionCB, "save_session_dialog", SHORT);
+    createMenuSeparator(menuPane, "sep3", SHORT);
     createMenuItem(menuPane, "includeFile", "Include File...", 'I',
     	    doActionCB, "include_file_dialog", SHORT);
     createMenuItem(menuPane, "loadMacroFile", "Load Macro File...", 'M',
@@ -701,14 +759,13 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     XtSetSensitive(window->unloadTipsMenuItem, TipsFileList != NULL);
     XtAddCallback(window->unloadTipsMenuItem, XmNcascadingCallback,
 	    (XtCallbackProc)unloadTipsFileMenuCB, window);
-    createMenuSeparator(menuPane, "sep3", SHORT);
     createMenuItem(menuPane, "print", "Print...", 'P', doActionCB, "print",
     	    SHORT);
     window->printSelItem = createMenuItem(menuPane, "printSelection",
     	    "Print Selection...", 'l', doActionCB, "print_selection",
     	    SHORT);
     XtSetSensitive(window->printSelItem, window->wasSelected);
-    createMenuSeparator(menuPane, "sep4", SHORT);
+    createMenuSeparator(menuPane, "sep5", SHORT);
     createMenuItem(menuPane, "exit", "Exit", 'x', doActionCB, "exit", SHORT);   
     CheckCloseDim();
 
@@ -4907,16 +4964,668 @@ void WriteNEditDB(void)
 }
 
 /*
-**  Read database of file names for 'Open Previous' submenu.
+** Save the recent file/window info to the session database.
 **
-**  Eventually, this may hold window positions, and possibly file marks (in
-**  which case it should be moved to a different module) but for now it's
-**  just a list of previously opened files.
+** maximum number of files recorded are per X-resource 
+** "nedit.maxPrevOpenFiles",or as defined by MAX_RECENT_FILES,
+** whichever is larger.
 **
-**  This list is read once at startup and potentially refreshed before a
-**  new entry is about to be written to the file or before the menu is
-**  displayed. If the file is modified since the last read (or not read
-**  before), it is read in, otherwise nothing is done.
+** supported fields in record:
+** 1) mod time of file (as per window)
+** 2) last cursor position (+ selection)
+** 3) bookmarks
+*/
+void SaveRecentFileInfo(WindowInfo *window)
+{
+    char windowFileName[MAXPATHLEN];
+    char infileName[MAXPATHLEN], outfileName[MAXPATHLEN];
+    char str[MAXPATHLEN], line[MAX_SESSION_LINE_LEN];
+    FILE *fpout, *fpin;
+    int i, numberOfRecentFile, maxRecentFiles;
+    Dimension windowHeight, windowWidth;
+    int emTabDist, wrapMargin;
+
+    /* determine max # of files recorded */
+    maxRecentFiles = GetPrefMaxPrevOpenFiles();
+    if (maxRecentFiles < MAX_RECENT_FILES)
+        maxRecentFiles = MAX_RECENT_FILES;
+    
+    /* the nedit database file resides in the home directory, prepend the
+       contents of the $HOME environment variable */
+#ifdef VMS
+    sprintf(infileName, "%s%s;1", "SYS$LOGIN:", NEDIT_SESSION_FILE_NAME);
+    sprintf(outfileName, "%s%s~;1", "SYS$LOGIN:", NEDIT_SESSION_FILE_NAME);
+#else
+    sprintf(infileName, "%s/%s", GetHomeDir(), NEDIT_SESSION_FILE_NAME);
+    sprintf(outfileName, "%s/%s~", GetHomeDir(), NEDIT_SESSION_FILE_NAME);
+#endif /*VMS*/
+
+    /* open the session file or create a new one (later) */
+    if ((fpin = fopen(infileName, "r")) == NULL)
+    	printf("[NEdit] creating %s\n", infileName);
+
+    /* open the tmp session file for updating */
+    if ((fpout = fopen(outfileName, "w")) == NULL)
+    	return;
+    
+    /* recent filename */
+    sprintf(windowFileName, "%s%s", window->path, window->filename);
+    
+    /** update the new info for window **/
+    fprintf(fpout, "@RecentFile=%s\n", windowFileName);
+     
+    fprintf(fpout, "LastModTime=%ld\n", window->lastModTime);
+    
+    /* last selected area and/or cursor position */
+    fprintf(fpout, "CursorPos=%d,%d,%d,%d,%d,%d,%d\n", 
+    	    TextGetCursorPos(window->lastFocus),
+	    window->buffer->primary.selected,
+	    window->buffer->primary.rectangular,
+	    window->buffer->primary.start,
+	    window->buffer->primary.end,
+	    window->buffer->primary.rectStart,
+	    window->buffer->primary.rectEnd);
+
+    /* window dimension & settings */
+    XtVaGetValues(window->shell, XmNheight, &windowHeight,
+    	    XmNwidth, &windowWidth, NULL);
+    fprintf(fpout, "ShellWindow=%d,%d\n", windowWidth, windowHeight);
+
+    /* Language mode */
+    fprintf(fpout, "Language=%s\n", 
+    	    window->languageMode == PLAIN_LANGUAGE_MODE?
+	    "Plain" : LanguageModeName(window->languageMode));
+
+    /* window preference settings */    
+    XtVaGetValues(window->textArea, textNemulateTabs, &emTabDist,
+    	    textNwrapMargin, &wrapMargin, NULL);
+    fprintf(fpout, "Preferences=%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", 
+    	    window->showLineNumbers,
+    	    window->showStats,
+    	    window->showISearchLine,
+    	    window->highlightSyntax,
+	    window->overstrike,
+	    window->lockReasons,
+	    window->indentStyle,
+	    window->wrapMode,
+	    wrapMargin,
+	    window->buffer->tabDist,
+	    emTabDist,
+	    window->saveOldVersion,
+	    window->showMatchingStyle,
+	    window->matchSyntaxBased);
+     
+    /* split panes */
+    for (i=0; i<=window->nPanes; i++) {
+    	Dimension paneHeight;
+	int insertPosition, topLine, horizOffset;
+	int focusPane = 0;
+	
+    	Widget text = i==0 ? window->textArea : window->textPanes[i-1];
+    	insertPosition = TextGetCursorPos(text);
+    	XtVaGetValues(XtParent(text), XmNheight, &paneHeight, NULL);
+    	TextGetScroll(text, &topLine, &horizOffset);
+    	if (text == window->lastFocus)
+    	    focusPane = 1;
+    	
+	fprintf(fpout, "TextPane=%d,%d,%d,%d,%d\n",
+    	    	paneHeight, insertPosition, topLine, horizOffset, focusPane);
+    }
+
+    /* the active bookmarks */
+    for (i=0; i< window->nMarks; i++) {
+	int label = isalnum(window->markTable[i].label)?
+		window->markTable[i].label : '.';
+
+	fprintf(fpout, "Bookmark=%c,%d,%d,%d,%d,%d,%d,%d\n",
+		label,
+		window->markTable[i].cursorPos,
+		window->markTable[i].sel.selected,
+		window->markTable[i].sel.rectangular,
+		window->markTable[i].sel.start,
+		window->markTable[i].sel.end,
+		window->markTable[i].sel.rectStart,
+		window->markTable[i].sel.rectEnd);
+
+    }
+
+    fprintf(fpout, "\n");
+    numberOfRecentFile = 1;
+    
+    /* search and remove the recent filename section for 
+       the target filename in session file. Also cleanup
+       the sections for files that are no longer on the
+       prev-open list */
+    while (fpin) {
+    	if (fgets(line, MAX_SESSION_LINE_LEN, fpin) == NULL) {
+    	    break;					 /* end of file */
+    	}
+
+	/* look for recent file section */
+	if (sscanf(line, "@RecentFile=%[^\n]", str) != 1) {
+	    fprintf(fpout,"%s",line);
+	    continue;
+        }
+	
+	numberOfRecentFile++;
+	
+	/* remove if it's for current window, or quota exceeded  */
+	if (strcmp(str, windowFileName) == 0 || 
+	        numberOfRecentFile > maxRecentFiles) {
+	    while (fgets(line, MAX_SESSION_LINE_LEN, fpin) != NULL) {
+		if (line[0] == '@') {
+		    if (fseek(fpin, -strlen(line), SEEK_CUR)) {
+			perror("fseek() failed");
+		    }
+	            break;
+		}
+            }
+	}
+	else {
+	    fprintf(fpout,"%s",line);
+	}
+    }
+    
+    /* replace database with the new one */
+    if (fpout) fclose(fpout);	
+    if (fpin) fclose(fpin);  
+    if (rename(outfileName, infileName)) {
+    	perror("[NEdit] Error, can't move window state file");
+    }
+}
+
+/*
+** Read & restore recent file info from the database 
+** if the file has not changed since last seen by NEdit.
+**
+** return True if the file is found in database, else return False.
+*/
+int RestoreRecentFileInfo(WindowInfo *window)
+{
+    char windowFileName[MAXPATHLEN], sessionFileName[MAXPATHLEN];
+    char str[MAXPATHLEN], line[MAX_SESSION_LINE_LEN];
+    FILE *fp;
+    time_t lastModTime;
+    int cursorPos = -1;
+    Bookmark bmark;
+    selection lastSel;
+    int paneHeights[MAX_PANES+1];
+    int insertPositions[MAX_PANES+1], topLines[MAX_PANES+1];
+    int horizOffsets[MAX_PANES+1];
+    int i, nPanes = 0, focusPane = 0, fPane;
+    int windowHeight=0, windowWidth=0;
+    Widget text;
+    int showLineNumbers, showStats, showISearchLine, highlightSyntax;
+    int overstrike, lockReasons, indentStyle;
+    int wrapMode, wrapMargin, tabDist, emTabDist;
+    int saveOldVersion, showMatchingStyle, matchSyntaxBased;
+    char *params[2];
+    
+    /* the nedit session file resides in the home directory, prepend the
+       contents of the $HOME environment variable */
+#ifdef VMS
+    sprintf(sessionFileName, "%s%s", "SYS$LOGIN:", NEDIT_SESSION_FILE_NAME);
+#else
+    sprintf(sessionFileName, "%s/%s", GetHomeDir(), NEDIT_SESSION_FILE_NAME);
+#endif /*VMS*/
+
+    /* open the session file */
+    if (!GetPrefRestoreRecentFile() || (fp = fopen(sessionFileName, "r"))==NULL)
+    	return False;
+
+    sprintf(windowFileName, "%s%s", window->path, window->filename);
+
+    /* diable screen update for window */
+    XtVaSetValues(window->lastFocus, textNautoShowInsertPos, False, NULL);
+
+    /* search for the filename in the recent file sections */
+    while (True) {
+    	if (fgets(line, MAX_SESSION_LINE_LEN, fp) == NULL) {
+            fclose(fp);
+    	    return False;
+    	}
+	
+	if (sscanf(line, "@RecentFile=%[^\n]", str) != 1)
+	    continue;
+	
+	/* is this the one? */    
+	if (strcmp(windowFileName, str) == 0) {
+	    break;
+	}
+    }	 
+
+    /* load and restore the state of the file before it was 
+       last closed. If we don't have a match, the session 
+       file will be at eof */
+    while (fgets(line, MAX_SESSION_LINE_LEN, fp) != NULL) {
+	if (line[0] == '@') {
+	    break;
+	}
+
+        if (sscanf(line, "LastModTime=%ld", &lastModTime)) {
+	    /* if file has been modified since last seen by NEdit,
+	       the info recorded are probably invalid */
+	    if (lastModTime != window->lastModTime) {
+	         break;
+	    }
+	}
+	else if (sscanf(line, "Bookmark= %c, %d, %c, %c, %d, %d, %d, %d",
+		&bmark.label, &bmark.cursorPos,
+		&bmark.sel.selected, &bmark.sel.rectangular,
+		&bmark.sel.start, &bmark.sel.end,
+		&bmark.sel.rectStart, &bmark.sel.rectEnd) > 0) {
+    	    char letterText[2] =" ", *params[1];
+
+	    bmark.sel.selected -= '0';
+	    bmark.sel.rectangular -= '0';
+
+	    if (bmark.sel.selected) {
+    		if (bmark.sel.rectangular)
+    		    BufRectSelect(window->buffer, bmark.sel.start, 
+		            bmark.sel.end, bmark.sel.rectStart,
+			    bmark.sel.rectEnd);
+    		else
+    		    BufSelect(window->buffer, bmark.sel.start, bmark.sel.end);
+	    } else
+    		BufUnselect(window->buffer);
+
+    	    TextSetCursorPos(window->lastFocus, bmark.cursorPos);
+	    
+	    /* As a provision for the 'impending' work on bookmarks,
+	       we use mark() action instead of copying the bookmark
+	       directly. */
+	    letterText[0] = bmark.label;
+ 	    params[0] = letterText;
+	    XtCallActionProc(window->lastFocus, "mark", NULL, params, 1);
+	}
+	else if (sscanf(line, "CursorPos= %d, %c, %c, %d, %d, %d, %d",
+		&cursorPos,
+		&lastSel.selected, &lastSel.rectangular,
+		&lastSel.start, &lastSel.end,
+		&lastSel.rectStart, &lastSel.rectEnd) > 0) {
+	    lastSel.selected -= '0';
+	    lastSel.rectangular -= '0';
+	}	          
+	else if (sscanf(line, "TextPane= %d, %d, %d, %d, %d",
+    	    	&paneHeights[nPanes],
+		&insertPositions[nPanes], 
+		&topLines[nPanes],
+		&horizOffsets[nPanes],
+		&fPane) > 0) {
+	    if (fPane)
+	    	focusPane = nPanes;		
+	    if (nPanes < MAX_PANES)
+	    	nPanes++;
+	}		
+	else if (sscanf(line, "ShellWindow= %d, %d", 
+	    	&windowWidth, &windowHeight) > 0) {
+	    /* restore window dimension, later */
+	}
+	else if (sscanf(line, "Language=%[^\n]", str) == 1) {
+	    Widget menu;
+	    WidgetList items;
+	    int n, mode;
+	    Cardinal nItems;
+	    void *userData;
+
+    	    /* we try to update the language setting and menus, instead
+	       of calling set_language_mode() action, as it will try to
+	       start the syntax hilite if the default setting is on, 
+	       which will be a waste of time if the syntax-hiliting was
+	       turned off deliberately.*/
+	    window->languageMode = mode = FindLanguageMode(str);
+
+	    /* Select the correct language mode in the sub-menu */
+	    XtVaGetValues(window->langModeCascade, XmNsubMenuId, 
+		    &menu, NULL);
+	    XtVaGetValues(menu, XmNchildren, &items, XmNnumChildren,
+		    &nItems, NULL);
+	    for (n=0; n<(int)nItems; n++) {
+    		XtVaGetValues(items[n], XmNuserData, &userData, NULL);
+    		XmToggleButtonSetState(items[n],
+		    	(int)userData == mode, False);
+	    }
+
+	    XtSetSensitive(window->highlightItem, mode != PLAIN_LANGUAGE_MODE);
+	}
+	else if (sscanf(line,
+	    	"Preferences=%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", 
+    		&showLineNumbers, &showStats,
+    		&showISearchLine, &highlightSyntax,
+		&overstrike, &lockReasons, &indentStyle,
+	    	&wrapMode, &wrapMargin,
+	    	&tabDist, &emTabDist,
+		&saveOldVersion, &showMatchingStyle, &matchSyntaxBased) > 0) {
+	    params[0] = str;
+    	    if (window->showLineNumbers != showLineNumbers) {
+		sprintf(str, "%d", showLineNumbers);
+		XtCallActionProc(window->textArea, 
+		    	"set_show_line_numbers", NULL, params, 1);
+    	    }
+
+    	    if (window->showStats != showStats) {
+		sprintf(str, "%d", showStats);
+		XtCallActionProc(window->textArea, 
+		    	"set_statistics_line", NULL, params, 1);
+    	    }
+	    
+    	    if (window->showISearchLine != showISearchLine) {
+		sprintf(str, "%d", showISearchLine);
+		XtCallActionProc(window->textArea, 
+		    	"set_incremental_search_line", NULL, params, 1);
+    	    }
+
+     	    if (1) {
+		sprintf(str, "%d", highlightSyntax);
+		XtCallActionProc(window->textArea,
+		    	"set_highlight_syntax", NULL, params, 1);
+    	    }
+
+     	    if (window->overstrike != overstrike) {
+		sprintf(str, "%d", overstrike);
+		XtCallActionProc(window->textArea,
+		    	"set_overtype_mode", NULL, params, 1);
+    	    }
+
+     	    if (window->lockReasons != lockReasons) {
+		sprintf(str, "%d", IS_USER_LOCKED(lockReasons));
+		XtCallActionProc(window->textArea,
+		    	"set_locked", NULL, params, 1);
+    	    }
+
+     	    if (window->indentStyle != indentStyle) {
+            	SetAutoIndent(window, indentStyle);
+    	    }
+
+     	    if (window->wrapMode != wrapMode) {
+            	SetAutoWrap(window, wrapMode);
+    	    }
+
+     	    if (1) {
+		sprintf(str, "%d", wrapMargin);
+		XtCallActionProc(window->textArea,
+		    	"set_wrap_margin", NULL, params, 1);
+    	    }
+
+     	    if (window->buffer->tabDist != tabDist) {
+		sprintf(str, "%d", tabDist);
+		XtCallActionProc(window->textArea,
+		    	"set_tab_dist", NULL, params, 1);
+    	    }
+
+     	    if (1) {
+		sprintf(str, "%d", emTabDist);
+		XtCallActionProc(window->textArea,
+		    	"set_em_tab_dist", NULL, params, 1);
+    	    }
+
+     	    if (window->saveOldVersion != saveOldVersion) {
+		sprintf(str, "%d", saveOldVersion);
+		XtCallActionProc(window->textArea,
+		    	"set_make_backup_copy", NULL, params, 1);
+    	    }
+
+     	    if (window->showMatchingStyle != showMatchingStyle) {
+            	SetShowMatching(window, showMatchingStyle);
+    	    }
+
+     	    if (window->matchSyntaxBased != matchSyntaxBased) {
+		sprintf(str, "%d", matchSyntaxBased);
+		XtCallActionProc(window->textArea,
+		    	"set_match_syntax_based", NULL, params, 1);
+    	    }
+	}
+    }
+    
+    
+    /* enable screen update for window */
+    XtVaSetValues(window->lastFocus, textNautoShowInsertPos, True, NULL);
+
+    /* Create the exact number of split panes */
+    for (i=window->nPanes; i<nPanes-1; i++)
+	XtCallActionProc(window->lastFocus, "split_window", NULL, NULL, 0);
+
+    for (i=window->nPanes; i>nPanes-1; i--)
+	XtCallActionProc(window->lastFocus, "close_pane", NULL, NULL, 0);
+	
+    /* Re-manage panedWindow to recalculate pane heights & reset selection */
+    XtUnmanageChild(window->splitPane);
+    
+    /* Restore all of the pane heights, scroll positions, etc. */
+    for (i=0; i<=window->nPanes; i++) {
+    	void SetPaneDesiredHeight(Widget w, int height);
+    	text = i==0 ? window->textArea : window->textPanes[i-1];
+	TextSetCursorPos(text, insertPositions[i]);
+	TextSetScroll(text, topLines[i], horizOffsets[i]);
+    	SetPaneDesiredHeight(XtParent(text), paneHeights[i]);
+	if (i == focusPane)
+	    window->lastFocus = text;
+    }
+    
+    XtManageChild(window->splitPane);
+    
+    /* restore window dimension */
+    if (windowHeight && windowWidth) {
+    	/* a trick to false the split-panes to adjust to the
+	   pane heights we just set */
+	XtVaSetValues(window->shell, XmNheight, windowHeight-1,
+    		XmNwidth, windowWidth-1, NULL);
+	XtVaSetValues(window->shell, XmNheight, windowHeight,
+    		XmNwidth, windowWidth, NULL);
+    }
+
+    /* bring the window to last cursor position */
+    if (cursorPos >= 0) {
+	int lineNum, rows;
+		
+	if (lastSel.selected) {
+	    if (lastSel.rectangular)
+    		BufRectSelect(window->buffer, lastSel.start, lastSel.end,
+			lastSel.rectStart, lastSel.rectEnd);
+	    else
+    		BufSelect(window->buffer, lastSel.start, lastSel.end);
+	} else
+	    BufUnselect(window->buffer);
+
+    	if (!nPanes) {
+	    /* Position it nicely in the window, about 1/4 of the 
+	       way down from the top - for backward compatibility
+	       on pre-splitpane version of ~/.nedit.session file */
+	    lineNum = BufCountLines(window->buffer, 0, cursorPos);
+	    XtVaGetValues(window->lastFocus, textNrows, &rows, NULL);
+	    TextSetScroll(window->lastFocus, lineNum - rows/4, 0);
+	    TextSetCursorPos(window->lastFocus, cursorPos);
+	}
+    }
+    
+    XmProcessTraversal(window->lastFocus, XmTRAVERSE_CURRENT);
+    
+    fclose(fp);
+    return True;
+}
+
+/*
+** Save/delete the session info in the session file:
+**  -  to save: window == WindowList, 
+**  -  to delete: window == NULL.
+**
+** Session info recorded:
+**  1) files opened
+**  2) tags files loaded
+**  3) search/replace history
+*/
+void SaveSession(char *sessionName, int deleteSession)
+{
+    char infileName[MAXPATHLEN], outfileName[MAXPATHLEN];
+    char str[MAXPATHLEN], line[MAX_SESSION_LINE_LEN];
+    FILE *fpout, *fpin;
+    WindowInfo *win;
+    
+    if (!strlen(sessionName))
+        return;
+	
+    /* the nedit session file resides in the home directory, prepend the
+       contents of the $HOME environment variable */
+#ifdef VMS
+    sprintf(infileName, "%s%s;1", "SYS$LOGIN:", NEDIT_SESSION_FILE_NAME);
+    sprintf(outfileName, "%s%s~;1", "SYS$LOGIN:", NEDIT_SESSION_FILE_NAME);
+#else
+    sprintf(infileName, "%s/%s", GetHomeDir(), NEDIT_SESSION_FILE_NAME);
+    sprintf(outfileName, "%s/%s~", GetHomeDir(), NEDIT_SESSION_FILE_NAME);
+#endif /*VMS*/
+
+    /* open the session file or create a new one (later) */
+    if ((fpin = fopen(infileName, "r")) == NULL)
+    	printf("[NEdit] creating %s\n", infileName);
+
+    /* open the tmp session file for updating */
+    if ((fpout = fopen(outfileName, "w")) == NULL)
+    	return;
+    
+    /* read */
+    while (fpin) {
+    	if (fgets(line, MAX_SESSION_LINE_LEN, fpin) == NULL) {
+    	    break;	/* end of file */
+    	}
+
+	if (sscanf(line, "@Session=%[^\n]", str) != 1) {
+	    fprintf(fpout,"%s",line);
+	    continue;
+        }
+	
+	if (strcmp(str, sessionName) == 0) {
+	    while (fgets(line, MAX_SESSION_LINE_LEN, fpin) != NULL) {
+		if (line[0] == '@') {
+	            fprintf(fpout,"%s",line);
+	            break;
+		}
+            }
+	}
+	else {
+	    fprintf(fpout,"%s",line);
+	}
+    }
+    
+    if (!deleteSession) {
+        int i;
+	tagFile *tag;
+	
+	fprintf(fpout, "@Session=%s\n", sessionName);
+
+        /* active windows */
+	for (win=WindowList; win!=NULL; win=win->next) {
+            if (win->filenameSet)
+    		fprintf(fpout, "Filename=%s%s\n", win->path, win->filename);
+	}
+
+        for (tag=TagsFileList; tag; tag = tag->next)
+	    fprintf(fpout, "TagFile=%s\n", tag->filename);
+	    
+    	/* search/replace history */
+        for(i=0; i<NHist; i++) {
+	    fprintf(fpout, "SearchString=%d,%s\n", i, SearchHistory[i]);
+	    fprintf(fpout, "ReplaceString=%d,%s\n", i, ReplaceHistory[i]);
+	    fprintf(fpout, "SearchType=%d,%d\n", i, SearchTypeHistory[i]);
+	}
+
+	fprintf(fpout, "\n");
+    }
+        
+    /* replace database with the new one */
+    if (fpout) fclose(fpout);	
+    if (fpin) fclose(fpin);  
+    if (rename(outfileName, infileName)) {
+    	perror("[NEdit] Error, can't move window state file");
+    }
+}
+
+/*
+** read session info from session data file and restore 
+** the state of the session
+**
+** return True if the session is found, else return False.
+*/
+int RestoreSession(char *sessionName)
+{
+    char infileName[MAXPATHLEN]; 
+    char str[MAXPATHLEN], line[MAX_SESSION_LINE_LEN];
+    char searchString[MAXPATHLEN] = "", replaceString[MAXPATHLEN] = "";
+    int index, searchType, found = False;
+    char *params[2];
+    FILE *fp;
+    
+    /* the nedit session file resides in the home directory, prepend the
+       contents of the $HOME environment variable */
+#ifdef VMS
+    sprintf(infileName, "%s%s;1", "SYS$LOGIN:", NEDIT_SESSION_FILE_NAME);
+#else
+    sprintf(infileName, "%s/%s", GetHomeDir(), NEDIT_SESSION_FILE_NAME);
+#endif /*VMS*/
+
+    /* open the session file */
+    if ((fp = fopen(infileName, "r")) == NULL)
+	return found;
+    
+    /* search for server session that match the server name */
+    while (True) {
+    	if (fgets(line, MAX_SESSION_LINE_LEN, fp) == NULL) {
+    	    break;	/* end of file */
+    	}
+
+	if (sscanf(line, "@Session=%[^\n]", str) != 1) 
+	    continue;
+
+        /* is this is one? */
+	if (strcmp(str, sessionName) == 0) {
+	    found = True;
+	    break;
+	}
+    }
+
+    /* if we found the session, load it */
+    while (fgets(line, MAX_SESSION_LINE_LEN, fp) != NULL) {
+	if (line[0] == '@') {
+	    break;
+	}
+
+	if (sscanf(line, "Filename=%[^\n]", str) == 1) {
+	    /* restore the file openned in the session */
+	    params[0] = str;
+	    XtCallActionProc(WindowList->lastFocus, "open", NULL, params, 1);
+	}
+	else if (sscanf(line, "TagFile=%[^\n]", str) == 1) {
+	    /* load tags file */
+	    params[0] = str;	    
+	    XtCallActionProc(WindowList->lastFocus, "load_tags_file", 
+	            NULL, params, 1);
+    	}
+	else if (sscanf(line, "SearchString=%d,%[^\n]", &index, str) == 2) {
+	    strcpy(searchString, str);
+	}
+	else if (sscanf(line, "ReplaceString=%d,%[^\n]", &index, str) == 2) {
+	    strcpy(replaceString, str);
+	}
+	else if (sscanf(line, "SearchType=%d,%d", &index, &searchType) == 2) {
+	    /* Restore search history. Field 'SearchType' marks the end
+	       of a history block */
+	    if (searchString[0]) {
+		saveSearchHistory(WindowList, searchString, replaceString, searchType, FALSE);
+		searchString[0] = '\0';
+		replaceString[0] = '\0';
+	    }
+	    else {
+	        fprintf(stderr, "[NEdit] error in search history for session %s\n",
+		        sessionName);
+	    }
+	}
+
+    }
+    
+    fclose(fp);
+    return found;
+}
+
+/*
 */
 void ReadNEditDB(void)
 {
@@ -5512,3 +6221,305 @@ static int shortPrefAskDefault(Widget parent, Widget w, const char *settingName)
     return False; /* not reached */
 }
 #endif
+
+/*
+** read in list of available sessions from session files
+**
+** Must call freeListItem() to free the allocated memory
+** for the list.
+*/
+static ListItem getSessionList(void)
+{
+    ListItem list = {0};
+    int arraySize = 10, increment = 5;
+    char infileName[MAXPATHLEN]; 
+    char str[MAXPATHLEN], line[MAX_SESSION_LINE_LEN];
+    FILE *fp;
+
+    /* the nedit session file resides in the home directory, prepend the
+       contents of the $HOME environment variable */
+#ifdef VMS
+    sprintf(infileName, "%s%s;1", "SYS$LOGIN:", NEDIT_SESSION_FILE_NAME);
+#else
+    sprintf(infileName, "%s/%s", GetHomeDir(), NEDIT_SESSION_FILE_NAME);
+#endif /*VMS*/
+
+    /* open the session file */
+    if ((fp = fopen(infileName, "r")) == NULL)
+	return list;
+    
+    /* initial size of list */
+    list.items = (XmString *) XtMalloc (arraySize * sizeof (XmString));
+
+    /* get list of sessions from session file */
+    while (fgets(line, MAX_SESSION_LINE_LEN, fp)) {
+	if (sscanf(line, "@Session=%[^\n]", str) == 1) {
+	    if (list.size >= arraySize) {
+	        /* oops, we need more room */
+	        arraySize += increment;
+	        list.items = (XmString *)XtRealloc((char *)list.items, 
+		        arraySize * sizeof (XmString));
+	    }
+	    
+	    /* add session name to list */
+	    list.items[list.size++] = MKSTRING(str);
+    	}
+    }
+
+    fclose(fp);
+    
+    /* free the storage is never used */
+    if (!list.size) {
+        XtFree((char*)list.items);
+        list.items = NULL;
+    }
+        
+    return list;
+}
+
+/*
+** Free the allocated list (used by listbox)
+*/
+void freeListItem(ListItem list)
+{
+    int i;
+    
+    if (!list.size)
+        return;
+	
+    for (i=0; i<list.size; i++)
+	XmStringFree (list.items[i]); /* free elements of array */
+
+    XtFree ((char *) list.items); /* now free array pointer */
+}
+
+static void openSessionOKCB(Widget widget, XtPointer clientData, XtPointer callData)
+{
+    String value;
+    XmSelectionBoxCallbackStruct *cbs = (XmSelectionBoxCallbackStruct *) callData;
+    WindowInfo *window = WidgetToWindow(widget);
+
+    XmStringGetLtoR(cbs->value, XmSTRING_DEFAULT_CHARSET, &value);
+
+    if (cbs->reason == XmCR_OK) {
+        RestoreSession(value);
+        DoneWithSessionDialog = 1;
+    }
+    else {
+	DialogF(DF_WARN, window->shell, 1, "Invalid session name!", "Close");
+    }
+    	   
+    XtFree (value);
+}
+
+static void openSessionCancelCB(Widget w, XtPointer clientData, XtPointer callData)
+{
+    DoneWithSessionDialog = 2;
+}
+
+static void saveSessionCancelCB(Widget w, XtPointer clientData, XtPointer callData)
+{
+    DoneWithSessionDialog = 2;
+}
+
+static void openSessionDialogAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs)
+{
+    openSessionDialog(w);
+}
+
+static void saveSessionDialogAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs)
+{
+    saveSessionDialog(w);
+}
+
+static void openSessionAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs)
+{
+    if (*nArgs == 0) {
+    	fprintf(stderr, "NEdit: open_session action requires session name\n");
+    	return;
+    }
+    RestoreSession(args[0]);
+}
+
+static void saveSessionAP(Widget w, XEvent *event, String *args,
+	Cardinal *nArgs)
+{
+    if (*nArgs == 0) {
+    	fprintf(stderr, "NEdit: save_session action requires session name\n");
+    	return;
+    }
+    SaveSession(args[0], False);
+}
+
+static void saveSessionOKCB(Widget widget, XtPointer clientData, XtPointer callData)
+{
+    String value;
+    XmSelectionBoxCallbackStruct *cbs = (XmSelectionBoxCallbackStruct *) callData;
+    WindowInfo *window = WidgetToWindow(widget);
+    
+    XmStringGetLtoR(cbs->value, XmSTRING_DEFAULT_CHARSET, &value);
+
+    if (cbs->reason == XmCR_OK && strlen(value)) {
+        SaveSession(value, False);
+        DoneWithSessionDialog = 1;
+    }
+    else {
+	DialogF(DF_WARN, window->shell, 1, "Invalid session name!", "Close");
+    }
+    	   
+    XtFree (value);
+}
+
+/*
+** Update session list on dialog
+*/
+static void updateSessionList(Widget dialog)
+{
+    Widget sessions = XmSelectionBoxGetChild(dialog, XmDIALOG_LIST);
+    ListItem sessionNames = getSessionList();
+
+    XtVaSetValues (dialog, 
+            XmNlistItems, sessionNames.items,
+            XmNlistItemCount, sessionNames.size,
+	    NULL);
+	    
+    if (sessionNames.size)
+         XmListSelectPos(sessions, 1, False);
+
+    freeListItem(sessionNames);
+}
+
+/*
+** delete the selected sessions and refresh the listbox in
+** the selection dialog
+*/
+static void deleteSessionCB(Widget dialog, XtPointer clientData, XtPointer callData)
+{
+    Widget sessions = XmSelectionBoxGetChild(dialog, XmDIALOG_LIST);
+    XmStringTable selectedItems;
+    int i, selectedItemsCount = 0;
+
+    XtVaGetValues(sessions,
+	    XmNselectedItemCount, &selectedItemsCount,
+	    XmNselectedItems,     &selectedItems,
+	    NULL);
+		  
+    if (!selectedItemsCount)
+        return;
+	
+    for (i = 0; i < selectedItemsCount; i++)
+    {
+	String selectedItem;
+	XmStringGetLtoR(selectedItems[i], XmSTRING_DEFAULT_CHARSET,
+	        &selectedItem);
+	SaveSession(selectedItem, True);
+	XtFree(selectedItem);
+    }
+    
+    updateSessionList(dialog);
+}
+
+/*
+** Present a dialog for user to save the current session.
+**
+** We can also delete the unwanted sessions - using the 
+** renamed 'Apply' button.
+*/
+static void saveSessionDialog(Widget parent)
+{
+    Widget dialog;
+    Arg args[10];
+    XmString s1;
+    int n=0;
+    ListItem sessionNames;
+    
+    XtSetArg(args[n], XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL); n++;
+    XtSetArg(args[n], XmNautoUnmanage, False); n++;
+    dialog = XmCreateSelectionDialog(parent, "saveSession", args, n);
+
+    s1 = MKSTRING("Save");
+    XtVaSetValues (dialog, XmNokLabelString, s1, NULL);
+    XmStringFree(s1);
+    
+    s1 = MKSTRING("Delete");
+    XtVaSetValues (dialog, XmNapplyLabelString, s1, NULL);
+    XmStringFree(s1);
+
+    XtAddCallback(dialog, XmNokCallback, (XtCallbackProc)saveSessionOKCB, NULL);
+    XtAddCallback(dialog, XmNcancelCallback, (XtCallbackProc)saveSessionCancelCB, NULL);
+    XtAddCallback(dialog, XmNapplyCallback, (XtCallbackProc)deleteSessionCB, NULL);
+    XtUnmanageChild(XmSelectionBoxGetChild(dialog, XmDIALOG_HELP_BUTTON));
+    XtVaSetValues(XtParent(dialog), XmNtitle, "NEdit: Save Session", NULL);
+
+    sessionNames = getSessionList();
+    XtVaSetValues (dialog, XmNlistLabelString, s1=MKSTRING("Sessions"), 
+			   XmNlistItems, sessionNames.items,
+			   XmNlistItemCount, sessionNames.size,
+			   XmNmustMatch, False,
+			   NULL);   
+    XmStringFree(s1);
+    freeListItem(sessionNames);
+
+    DoneWithSessionDialog = 0;
+    ManageDialogCenteredOnPointer(dialog);
+    while (!DoneWithSessionDialog)
+        XtAppProcessEvent(XtWidgetToApplicationContext(parent), XtIMAll);
+
+    XtUnmanageChild(dialog); 
+    XtDestroyWidget(dialog);
+}
+
+/*
+** Present a dialog to restore the previous saved session, or
+** rather just 'append' the session to whatever it already has. 
+**
+** We can also delete the unwanted sessions - using the 
+** renamed 'Apply' button.
+*/
+static void openSessionDialog(Widget parent)
+{
+    Widget dialog;
+    Arg args[10];
+    XmString s1;
+    int n=0;
+    ListItem sessionNames;
+    
+    XtSetArg(args[n], XmNdialogStyle, XmDIALOG_FULL_APPLICATION_MODAL); n++;
+    XtSetArg(args[n], XmNautoUnmanage, False); n++;
+    dialog = XmCreateSelectionDialog(parent, "openSession", args, n);
+
+    s1 = MKSTRING("Open");
+    XtVaSetValues (dialog, XmNokLabelString, s1, NULL);
+    XmStringFree(s1);
+    
+    s1 = MKSTRING("Delete");
+    XtVaSetValues (dialog, XmNapplyLabelString, s1, NULL);
+    XmStringFree(s1);
+    
+    XtAddCallback(dialog, XmNokCallback, (XtCallbackProc)openSessionOKCB, NULL);
+    XtAddCallback(dialog, XmNcancelCallback, (XtCallbackProc)openSessionCancelCB, NULL);
+    XtAddCallback(dialog, XmNapplyCallback, (XtCallbackProc)deleteSessionCB, NULL);
+    XtAddCallback(dialog, XmNnoMatchCallback, (XtCallbackProc)openSessionOKCB, NULL);
+    XtUnmanageChild(XmSelectionBoxGetChild(dialog, XmDIALOG_HELP_BUTTON));
+    XtVaSetValues(XtParent(dialog), XmNtitle, "NEdit: Open Session", NULL);
+
+    sessionNames = getSessionList();
+    XtVaSetValues (dialog, XmNlistLabelString, s1=MKSTRING("Sessions"), 
+			   XmNlistItems, sessionNames.items,
+			   XmNlistItemCount, sessionNames.size,
+			   XmNmustMatch, True,
+			   NULL);   
+    XmStringFree(s1);
+    freeListItem(sessionNames);
+
+    DoneWithSessionDialog = 0;
+    ManageDialogCenteredOnPointer(dialog);
+    while (!DoneWithSessionDialog)
+        XtAppProcessEvent(XtWidgetToApplicationContext(parent), XtIMAll);
+			       
+    XtUnmanageChild(dialog); 
+    XtDestroyWidget(dialog);
+}
