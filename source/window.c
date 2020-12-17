@@ -1265,7 +1265,7 @@ void SplitPane(WindowInfo *window)
     
     for (i=0; i<=window->nPanes; i++) {
         text = i==0 ? window->textArea : window->textPanes[i-1];
-        setPaneDesiredHeight(containingPane(text), paneHeights[i]);
+        SetPaneDesiredHeight(containingPane(text), paneHeights[i]);
     }
 
     /* Re-manage panedWindow to recalculate pane heights & reset selection */
@@ -1277,7 +1277,7 @@ void SplitPane(WindowInfo *window)
         text = i==0 ? window->textArea : window->textPanes[i-1];
         TextSetCursorPos(text, insertPositions[i]);
         TextSetScroll(text, topLines[i], horizOffsets[i]);
-        setPaneDesiredHeight(containingPane(text),
+        SetPaneDesiredHeight(containingPane(text),
                             totalHeight/(window->nPanes+1));
     }
     XmProcessTraversal(window->lastFocus, XmTRAVERSE_CURRENT);
@@ -1371,7 +1371,7 @@ void ClosePane(WindowInfo *window)
        recalculate pane heights */
     for (i=0; i<=window->nPanes; i++) {
         text = i==0 ? window->textArea : window->textPanes[i-1];
-        setPaneDesiredHeight(containingPane(text), paneHeights[i]);
+        SetPaneDesiredHeight(containingPane(text), paneHeights[i]);
     }
 
     if (IsTopDocument(window))
@@ -2856,6 +2856,7 @@ void SetPaneDesiredHeight(Widget w, int height)
 {
     ((XmPanedWindowConstraintPtr)w->core.constraints)->panedw.dheight = height;
 }
+
 void SetPaneMinHeight(Widget w, int min)
 {
     ((XmPanedWindowConstraintPtr)w->core.constraints)->panedw.min = min;
@@ -2953,9 +2954,9 @@ void UpdateMinPaneHeights(WindowInfo *window)
             swMarginHeight*2 + hsbHeight + 2*frameShadowHeight;
     
     /* Set it in all of the widgets in the window */
-    setPaneMinHeight(containingPane(window->textArea), minPaneHeight);
+    SetPaneMinHeight(containingPane(window->textArea), minPaneHeight);
     for (i=0; i<window->nPanes; i++)
-        setPaneMinHeight(containingPane(window->textPanes[i]),
+        SetPaneMinHeight(containingPane(window->textPanes[i]),
                    minPaneHeight);
 }
 
@@ -4217,7 +4218,7 @@ static void cloneTextPanes(WindowInfo *window, WindowInfo *orgWin)
 
 	for (i=0; i<=window->nPanes; i++) {
     	    text = i==0 ? window->textArea : window->textPanes[i-1];
-    	    setPaneDesiredHeight(containingPane(text), paneHeights[i]);
+    	    SetPaneDesiredHeight(containingPane(text), paneHeights[i]);
 	}
 
 	/* Re-manage panedWindow to recalculate pane heights & reset selection */
