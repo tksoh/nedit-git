@@ -219,7 +219,7 @@ static int findMatchingChar(WindowInfo *window, char toMatch,
 static Boolean replaceUsingRE(const char* searchStr, const char* replaceStr,
         const char* sourceStr, int beginPos, char* destStr, int maxDestLen,
         int prevChar, const char* delimiters, int defaultFlags);
-void saveSearchHistory(const char *searchString,
+static void saveSearchHistory(const char *searchString,
         const char *replaceString, int searchType, int isIncremental);
 static int historyIndex(int nCycles);
 static char *searchTypeArg(int searchType);
@@ -4752,6 +4752,12 @@ static Boolean replaceUsingRE(const char* searchStr, const char* replaceStr,
     return substResult;
 }
 
+void SaveSearchHistory(const char *searchString,
+        const char *replaceString, int searchType, int isIncremental)
+{
+    saveSearchHistory(searchString, replaceString, searchType, isIncremental);
+}
+
 /*
 ** Store the search and replace strings, and search type for later recall.
 ** If replaceString is NULL, duplicate the last replaceString used.
@@ -4760,7 +4766,7 @@ static Boolean replaceUsingRE(const char* searchStr, const char* replaceStr,
 ** is made.  To mark the end of an incremental search, call saveSearchHistory
 ** again with an empty search string and isIncremental==False.
 */
-void saveSearchHistory(const char *searchString,
+static void saveSearchHistory(const char *searchString,
         const char *replaceString, int searchType, int isIncremental)
 {
     char *sStr, *rStr;

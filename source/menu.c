@@ -131,8 +131,6 @@ static ListItem getSessionList(void);
 static void freeListItem(ListItem list);
 static void saveSessionDialog(Widget parent);
 static void openSessionDialog(Widget parent);
-void saveSearchHistory(WindowInfo *window, const char *searchString,
-	const char *replaceString, int searchType, int isIncremental);
 static void saveSessionDialogAP(Widget w, XEvent *event, String *args,
 	Cardinal *nArgs);
 static void openSessionDialogAP(Widget w, XEvent *event, String *args,
@@ -5609,7 +5607,7 @@ int RestoreSession(char *sessionName)
 	    /* Restore search history. Field 'SearchType' marks the end
 	       of a history block */
 	    if (searchString[0]) {
-		saveSearchHistory(WindowList, searchString, replaceString, searchType, FALSE);
+		SaveSearchHistory(searchString, replaceString, searchType, FALSE);
 		searchString[0] = '\0';
 		replaceString[0] = '\0';
 	    }

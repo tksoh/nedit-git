@@ -60,6 +60,8 @@ int ReplaceAll(WindowInfo *window, const char *searchString, const char *replace
 	int searchType);
 void ReplaceInSelection(const WindowInfo* window, const char* searchString,
         const char* replaceString, int searchType);
+void SaveSearchHistory(const char *searchString,
+        const char *replaceString, int searchType, int isIncremental);
 int SearchWindow(WindowInfo *window, int direction, const char *searchString,
 	int searchType, int searchWrap, int beginPos, int *startPos, int *endPos, 
 	int *extentBW, int* extentFW);
