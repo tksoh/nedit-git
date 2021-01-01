@@ -1188,7 +1188,7 @@ Widget CreateMenuBar(Widget parent, WindowInfo *window)
     menuPane = window->macroMenuPane =
     	    createMenu(menuBar, "macroMenu", "Macro", 0, &cascade, FULL);
     subPane = createMenu(menuPane, "macroEdit",
-            "Development", 0, &window->macroEditItem, FULL);
+            "Customize", 0, &window->macroEditItem, FULL);
     btn = createMenuItem(subPane, "checkMacroWindow",
 	   "Check Macro in Window", 'W', checkMacroWindowCB, window, SHORT);
     XtVaSetValues(btn, XmNuserData, PERMANENT_MENU_ITEM, NULL);
